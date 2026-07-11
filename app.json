@@ -1,18 +1,18 @@
 {
   "expo": {
-    "name": "TrailWild",
-    "slug": "TrailWild",
+    "name": "ImperialWood",
+    "slug": "imperialwood",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "trailwild",
+    "scheme": "imperialwood",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F7F1E8",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -28,7 +28,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#3B2416",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
