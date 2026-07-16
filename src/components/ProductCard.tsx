@@ -10,9 +10,15 @@ type ProductCardProps = {
   product: Product;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onDelete?: () => void;
 };
 
-export default function ProductCard({ product, isFavorite, onToggleFavorite }: ProductCardProps) {
+export default function ProductCard({
+  product,
+  isFavorite,
+  onToggleFavorite,
+  onDelete,
+}: ProductCardProps) {
   const router = useRouter();
   const { deleteProduct, role } = useAppContext();
   const isAdmin = role === 'admin';
@@ -22,7 +28,11 @@ export default function ProductCard({ product, isFavorite, onToggleFavorite }: P
 
   return (
     <TouchableOpacity style={styles.productCard} activeOpacity={0.9} onPress={openDetail}>
-      <Image source={product.image} style={styles.productImage} />
+      {product.image_url ? (
+        <Image source={{ uri: product.image_url }} style={styles.productImage} />
+      ) : (
+        <Image source={product.image} style={styles.productImage} />
+      )}
       <View style={styles.favoriteWrap}>
         <FavoriteButton isFavorite={isFavorite} onPress={onToggleFavorite} />
       </View>
@@ -42,7 +52,7 @@ export default function ProductCard({ product, isFavorite, onToggleFavorite }: P
           <TouchableOpacity
             style={styles.deleteButton}
             activeOpacity={0.8}
-            onPress={() => deleteProduct(product.id)}
+            onPress={onDelete ?? (() => deleteProduct(product.id))}
           >
             <Ionicons name="trash-outline" size={15} color="#8A4B22" />
             <Text style={styles.deleteButtonText}>Delete</Text>

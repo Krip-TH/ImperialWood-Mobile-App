@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
 import { ImageSourcePropType } from 'react-native';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
@@ -10,6 +10,7 @@ export type Product = {
   category: string;
   price: string;
   image: ImageSourcePropType;
+  image_url?: string;
   itemCode: string;
   stockQuantity: string;
   storeAvailability: string;
@@ -36,6 +37,7 @@ type AppContextValue = {
   login: (role: UserRole, username: string, password: string) => boolean;
   logout: () => void;
   addProduct: (product: Product) => void;
+  replaceProducts: (products: Product[]) => void;
   toggleFavorite: (productId: string) => void;
   deleteProduct: (productId: string) => void;
   deleteSampleProduct: () => void;
@@ -138,6 +140,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [nextItemNumber, setNextItemNumber] = useState(5);
   const [notice, setNotice] = useState('');
+  const replaceProducts = useCallback((catalogProducts: Product[]) => {
+    setProducts(catalogProducts);
+  }, []);
 
   const favoriteProducts = products.filter((product) => favoriteIds.includes(product.id));
   const totalStock = products.reduce(
@@ -184,6 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setNextItemNumber((currentNumber) => currentNumber + 1);
         setNotice('Door saved locally.');
       },
+      replaceProducts,
       toggleFavorite: (productId) => {
         setFavoriteIds((currentFavorites) =>
           currentFavorites.includes(productId)
@@ -224,7 +230,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       getProductById: (productId) => products.find((product) => product.id === productId),
     }),
-    [favoriteIds, favoriteProducts, nextItemCode, notice, products, role, totalStock]
+    [favoriteIds, favoriteProducts, nextItemCode, notice, products, replaceProducts, role, totalStock]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

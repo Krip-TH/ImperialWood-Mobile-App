@@ -70,7 +70,15 @@ export default function ProductDetailScreen() {
         ) : product ? (
           <>
             <View style={styles.imageCard}>
-              <Image source={product.image} style={styles.detailImage} resizeMode="contain" />
+              {product.image_url ? (
+                <Image
+                  source={{ uri: product.image_url }}
+                  style={styles.detailImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Image source={product.image} style={styles.detailImage} resizeMode="contain" />
+              )}
             </View>
             <View style={styles.detailCard}>
               <View style={styles.detailHeaderRow}>

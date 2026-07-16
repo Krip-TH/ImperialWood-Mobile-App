@@ -1,7 +1,7 @@
 import { Product, ProductStatus } from '@/context/AppContext';
 
 export const PRODUCTS_URL =
-  'https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/products.json';
+  'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/products.json';
 
 type ProductJson = {
   id: string;
@@ -62,6 +62,7 @@ export function parseProducts(value: unknown): Product[] {
     category: product.category,
     price: product.price_text,
     image: { uri: product.image_url },
+    image_url: product.image_url,
     itemCode: product.item_code,
     stockQuantity: product.stock_text,
     storeAvailability: product.location_text,

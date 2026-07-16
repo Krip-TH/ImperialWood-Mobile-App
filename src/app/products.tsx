@@ -10,7 +10,7 @@ import { Product, useAppContext } from '@/context/AppContext';
 import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
 
 export default function ProductsScreen() {
-  const { favoriteIds, role, toggleFavorite } = useAppContext();
+  const { deleteProduct, favoriteIds, replaceProducts, role, toggleFavorite } = useAppContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +26,9 @@ export default function ProductsScreen() {
         }
 
         const data: unknown = await response.json();
-        setProducts(parseProducts(data));
+        const downloadedProducts = parseProducts(data);
+        setProducts(downloadedProducts);
+        replaceProducts(downloadedProducts);
       } catch (requestError) {
         if (requestError instanceof Error && requestError.name === 'AbortError') {
           return;
@@ -34,6 +36,7 @@ export default function ProductsScreen() {
 
         setError('Unable to load the online catalog. Showing locally saved products.');
         setProducts(fallbackProducts);
+        replaceProducts(fallbackProducts);
       } finally {
         if (!controller.signal.aborted) {
           setIsLoading(false);
@@ -43,7 +46,14 @@ export default function ProductsScreen() {
 
     void loadProducts();
     return () => controller.abort();
-  }, []);
+  }, [replaceProducts]);
+
+  function handleDeleteProduct(productId: string) {
+    setProducts((currentProducts) =>
+      currentProducts.filter((product) => product.id !== productId)
+    );
+    deleteProduct(productId);
+  }
 
   if (!role) {
     return <Redirect href="/" />;
@@ -71,6 +81,7 @@ export default function ProductsScreen() {
               product={product}
               isFavorite={favoriteIds.includes(product.id)}
               onToggleFavorite={() => toggleFavorite(product.id)}
+              onDelete={() => handleDeleteProduct(product.id)}
             />
           ))
         )}

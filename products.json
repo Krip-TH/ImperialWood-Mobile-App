@@ -15,7 +15,7 @@
     "size": "80 x 200 cm",
     "finish": "Classic oak satin",
     "description": "A refined oak door with traditional panel proportions and a warm satin finish.",
-    "image_url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/assets/products/imperial-classic-oak-door.jpg"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/imperial-classic-oak-door.jpg"
   },
   {
     "id": "modern-walnut-entrance-door",
@@ -33,7 +33,7 @@
     "size": "90 x 200 cm",
     "finish": "Dark walnut matte",
     "description": "A bold entrance door with clean modern lines and rich walnut character.",
-    "image_url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/assets/products/modern-walnut-entrance-door.jpg"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/modern-walnut-entrance-door.jpg"
   },
   {
     "id": "premium-teak-glass-panel-door",
@@ -51,7 +51,7 @@
     "size": "90 x 200 cm",
     "finish": "Natural teak with clear glass",
     "description": "Premium teak construction paired with a glass panel for bright, elegant spaces.",
-    "image_url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/assets/products/premium-teak-glass-panel-door.jpg"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-teak-glass-panel-door.jpg"
   },
   {
     "id": "minimal-ash-interior-door",
@@ -69,6 +69,6 @@
     "size": "70 x 200 cm",
     "finish": "Light ash natural",
     "description": "A minimal interior door with a calm ash finish for modern rooms.",
-    "image_url": "https://raw.githubusercontent.com/USERNAME/REPOSITORY/main/assets/products/minimal-ash-interior-door.jpg"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/minimal-ash-interior-door.jpg"
   }
 ]
