@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  ImageSourcePropType,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -60,10 +59,6 @@ export default function AddProductScreen() {
       return;
     }
 
-    const image: ImageSourcePropType = selectedImageUri
-      ? { uri: selectedImageUri }
-      : require('../../assets/products/imperial-classic-oak-door.jpg');
-
     addProduct({
       id: nextItemCode,
       itemCode: nextItemCode,
@@ -76,7 +71,7 @@ export default function AddProductScreen() {
       material: selectedMaterial,
       size: selectedSize,
       finish: finish.trim(),
-      image,
+      image_url: selectedImageUri ?? undefined,
       status: getProductStatus(stockQuantity),
     });
 

@@ -31,7 +31,7 @@ export default function ProductDetailScreen() {
         }
 
         const data: unknown = await response.json();
-        setProduct(parseProducts(data).find((catalogProduct) => catalogProduct.id === id));
+        setProduct(parseProducts(data, true).find((catalogProduct) => catalogProduct.id === id));
       } catch (requestError) {
         if (requestError instanceof Error && requestError.name === 'AbortError') {
           return;

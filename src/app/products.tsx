@@ -49,7 +49,7 @@ export default function ProductsScreen() {
       try {
         const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
         if (!response.ok) throw new Error(`Product request failed with status ${response.status}.`);
-        const downloadedProducts = parseProducts(await response.json());
+        const downloadedProducts = parseProducts(await response.json(), true);
         setProducts(downloadedProducts);
         replaceProducts(downloadedProducts);
       } catch (requestError) {

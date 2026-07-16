@@ -190,7 +190,7 @@ function ClientHome({
       try {
         const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
         if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
-        const downloaded = parseProducts(await response.json());
+        const downloaded = parseProducts(await response.json(), true);
         replaceProducts(downloaded);
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;

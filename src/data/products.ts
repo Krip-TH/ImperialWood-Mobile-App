@@ -52,43 +52,32 @@ function isProductJson(value: unknown): value is ProductJson {
   );
 }
 
-export function parseProducts(value: unknown): Product[] {
+export function parseProducts(value: unknown, logFetchedImages = false): Product[] {
   if (!Array.isArray(value) || !value.every(isProductJson)) {
     throw new Error('The product catalog has an invalid format.');
   }
 
-  return value.map((product) => ({
-    id: product.id,
-    name: product.name,
-    category: product.category,
-    price: product.price_text,
-    image: getFallbackImage(product.id, product.category),
-    image_url: product.image_url,
-    itemCode: product.item_code,
-    stockQuantity: product.stock_text,
-    storeAvailability: product.location_text,
-    material: product.material,
-    size: product.size,
-    finish: product.finish,
-    description: product.description,
-    status: product.badge_status,
-  }));
+  return value.map((product) => {
+    if (logFetchedImages) {
+      console.log('Fetched product image:', product.id, product.image_url);
+    }
+
+    return {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: product.price_text,
+      image_url: product.image_url,
+      itemCode: product.item_code,
+      stockQuantity: product.stock_text,
+      storeAvailability: product.location_text,
+      material: product.material,
+      size: product.size,
+      finish: product.finish,
+      description: product.description,
+      status: product.badge_status,
+    };
+  });
 }
 
-function getFallbackImage(id: string, category: string) {
-  if (id === 'modern-walnut-entrance-door' || category === 'Modern Doors') {
-    return require('../../assets/products/modern-walnut-entrance-door.jpg');
-  }
-  if (id === 'premium-teak-glass-panel-door' || category === 'Glass Panel Doors') {
-    return require('../../assets/products/premium-teak-glass-panel-door.jpg');
-  }
-  if (id === 'minimal-ash-interior-door' || category === 'Interior Doors') {
-    return require('../../assets/products/minimal-ash-interior-door.jpg');
-  }
-  return require('../../assets/products/imperial-classic-oak-door.jpg');
-}
-
-export const fallbackProducts: Product[] = parseProducts(localCatalog).map((product) => ({
-  ...product,
-  image_url: undefined,
-}));
+export const fallbackProducts: Product[] = parseProducts(localCatalog);

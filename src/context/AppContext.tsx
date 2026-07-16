@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ImageSourcePropType } from 'react-native';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
 export type UserRole = 'client' | 'admin';
@@ -10,7 +9,6 @@ export type Product = {
   name: string;
   category: string;
   price: string;
-  image: ImageSourcePropType;
   image_url?: string;
   itemCode: string;
   stockQuantity: string;
@@ -64,7 +62,7 @@ const initialProducts: Product[] = [
     name: 'Imperial Classic Oak Door',
     category: 'Classic Doors',
     price: 'THB 18,900',
-    image: require('../../assets/products/imperial-classic-oak-door.jpg'),
+    image_url: 'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/imperial-classic-oak-door.jpg',
     itemCode: 'IW-001',
     stockQuantity: '8',
     storeAvailability: '2 stores',
@@ -79,7 +77,7 @@ const initialProducts: Product[] = [
     name: 'Modern Walnut Entrance Door',
     category: 'Entrance Doors',
     price: 'THB 24,500',
-    image: require('../../assets/products/modern-walnut-entrance-door.jpg'),
+    image_url: 'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/modern-walnut-entrance-door.jpg',
     itemCode: 'IW-002',
     stockQuantity: '5',
     storeAvailability: '1 store',
@@ -94,7 +92,7 @@ const initialProducts: Product[] = [
     name: 'Premium Teak Glass Panel Door',
     category: 'Glass Panel Doors',
     price: 'THB 29,900',
-    image: require('../../assets/products/premium-teak-glass-panel-door.jpg'),
+    image_url: 'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-teak-glass-panel-door.jpg',
     itemCode: 'IW-003',
     stockQuantity: '4',
     storeAvailability: '3 stores',
@@ -109,7 +107,7 @@ const initialProducts: Product[] = [
     name: 'Minimal Ash Interior Door',
     category: 'Interior Doors',
     price: 'THB 15,900',
-    image: require('../../assets/products/minimal-ash-interior-door.jpg'),
+    image_url: 'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/minimal-ash-interior-door.jpg',
     itemCode: 'IW-004',
     stockQuantity: '12',
     storeAvailability: 'Online only',

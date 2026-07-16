@@ -10,16 +10,36 @@ type Props = {
 };
 
 export default function ProductImage({ product, style, resizeMode = 'cover' }: Props) {
-  const [remoteFailed, setRemoteFailed] = useState(false);
+  const [failedImageIds, setFailedImageIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => setRemoteFailed(false), [product.image_url]);
+  useEffect(() => {
+    setFailedImageIds((current) => {
+      if (!current.has(product.id)) return current;
+      const updated = new Set(current);
+      updated.delete(product.id);
+      return updated;
+    });
+  }, [product.id, product.image_url]);
+
+  const remoteImageFailed = failedImageIds.has(product.id);
+  const genericFallback = require('../../assets/products/imperial-classic-oak-door.jpg');
+  const source = product.image_url && !remoteImageFailed
+    ? { uri: `${product.image_url}?v=3` }
+    : genericFallback;
 
   return (
     <Image
-      source={product.image_url && !remoteFailed ? { uri: product.image_url } : product.image}
+      source={source}
       style={style}
       resizeMode={resizeMode}
-      onError={() => setRemoteFailed(true)}
+      onError={() => {
+        console.log('Image load failed:', product.id, product.image_url);
+        setFailedImageIds((current) => {
+          const updated = new Set(current);
+          updated.add(product.id);
+          return updated;
+        });
+      }}
     />
   );
 }
