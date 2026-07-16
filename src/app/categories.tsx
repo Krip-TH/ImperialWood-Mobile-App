@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import Header from '@/components/Header';
 import { useAppContext } from '@/context/AppContext';
 
 export default function CategoriesScreen() {
+  const router = useRouter();
   const { categoryList, role } = useAppContext();
 
   if (!role) {
@@ -22,7 +23,11 @@ export default function CategoriesScreen() {
         <Text style={styles.sectionTitle}>Categories</Text>
         <View style={styles.categoryGrid}>
           {categoryList.map((category) => (
-            <CategoryCard key={category} name={category} />
+            <CategoryCard
+              key={category}
+              name={category}
+              onPress={() => router.push({ pathname: '/products', params: { category } })}
+            />
           ))}
         </View>
       </ScrollView>

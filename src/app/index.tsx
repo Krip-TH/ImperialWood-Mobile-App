@@ -195,7 +195,7 @@ function ClientHome({
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') return;
         replaceProducts(fallbackProducts);
-        setCatalogError('Online catalog unavailable. Showing the saved collection.');
+        setCatalogError('Showing offline product data.');
       } finally {
         if (!controller.signal.aborted) setIsLoading(false);
       }
@@ -237,7 +237,7 @@ function ClientHome({
   const cardWidth = Math.max(145, (contentWidth - 12 * (columns - 1)) / columns);
   const selectCategory = (category: string, label: string) => {
     if (label === 'More') { router.push('/categories'); return; }
-    setFilters((current) => ({ ...current, category: current.category === category ? 'All' : category }));
+    router.push({ pathname: '/products', params: { category } });
   };
 
   return (

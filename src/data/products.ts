@@ -1,4 +1,5 @@
 import { Product, ProductStatus } from '@/context/AppContext';
+import localCatalog from '../../products.json';
 
 export const PRODUCTS_URL =
   'https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/products.json';
@@ -61,7 +62,7 @@ export function parseProducts(value: unknown): Product[] {
     name: product.name,
     category: product.category,
     price: product.price_text,
-    image: { uri: product.image_url },
+    image: getFallbackImage(product.id, product.category),
     image_url: product.image_url,
     itemCode: product.item_code,
     stockQuantity: product.stock_text,
@@ -74,65 +75,20 @@ export function parseProducts(value: unknown): Product[] {
   }));
 }
 
-export const fallbackProducts: Product[] = [
-  {
-    id: 'imperial-classic-oak-door',
-    name: 'Imperial Classic Oak Door',
-    category: 'Classic Doors',
-    price: 'THB 18,900',
-    image: require('../../assets/products/imperial-classic-oak-door.jpg'),
-    itemCode: 'IW-001',
-    stockQuantity: '8 doors in stock',
-    storeAvailability: 'Available at 2 stores',
-    material: 'Oak',
-    size: '80 x 200 cm',
-    finish: 'Classic oak satin',
-    description: 'A refined oak door with traditional panel proportions and a warm satin finish.',
-    status: 'Available',
-  },
-  {
-    id: 'modern-walnut-entrance-door',
-    name: 'Modern Walnut Entrance Door',
-    category: 'Entrance Doors',
-    price: 'THB 24,500',
-    image: require('../../assets/products/modern-walnut-entrance-door.jpg'),
-    itemCode: 'IW-002',
-    stockQuantity: '5 doors in stock',
-    storeAvailability: 'Available at 1 store',
-    material: 'Walnut',
-    size: '90 x 200 cm',
-    finish: 'Dark walnut matte',
-    description: 'A bold entrance door with clean modern lines and rich walnut character.',
-    status: 'Low Stock',
-  },
-  {
-    id: 'premium-teak-glass-panel-door',
-    name: 'Premium Teak Glass Panel Door',
-    category: 'Glass Panel Doors',
-    price: 'THB 29,900',
-    image: require('../../assets/products/premium-teak-glass-panel-door.jpg'),
-    itemCode: 'IW-003',
-    stockQuantity: '4 doors in stock',
-    storeAvailability: 'Available at 3 stores',
-    material: 'Teak',
-    size: '90 x 200 cm',
-    finish: 'Natural teak with clear glass',
-    description: 'Premium teak construction paired with a glass panel for bright, elegant spaces.',
-    status: 'Low Stock',
-  },
-  {
-    id: 'minimal-ash-interior-door',
-    name: 'Minimal Ash Interior Door',
-    category: 'Interior Doors',
-    price: 'THB 15,900',
-    image: require('../../assets/products/minimal-ash-interior-door.jpg'),
-    itemCode: 'IW-004',
-    stockQuantity: '12 doors in stock',
-    storeAvailability: 'Available online only',
-    material: 'Ash',
-    size: '70 x 200 cm',
-    finish: 'Light ash natural',
-    description: 'A minimal interior door with a calm ash finish for modern rooms.',
-    status: 'Available',
-  },
-];
+function getFallbackImage(id: string, category: string) {
+  if (id === 'modern-walnut-entrance-door' || category === 'Modern Doors') {
+    return require('../../assets/products/modern-walnut-entrance-door.jpg');
+  }
+  if (id === 'premium-teak-glass-panel-door' || category === 'Glass Panel Doors') {
+    return require('../../assets/products/premium-teak-glass-panel-door.jpg');
+  }
+  if (id === 'minimal-ash-interior-door' || category === 'Interior Doors') {
+    return require('../../assets/products/minimal-ash-interior-door.jpg');
+  }
+  return require('../../assets/products/imperial-classic-oak-door.jpg');
+}
+
+export const fallbackProducts: Product[] = parseProducts(localCatalog).map((product) => ({
+  ...product,
+  image_url: undefined,
+}));

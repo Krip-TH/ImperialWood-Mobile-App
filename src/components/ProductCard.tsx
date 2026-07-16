@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Product, useAppContext } from '@/context/AppContext';
 import FavoriteButton from './FavoriteButton';
+import ProductImage from './ProductImage';
 import StatusBadge from './StatusBadge';
 
 type ProductCardProps = {
@@ -28,23 +29,19 @@ export default function ProductCard({
 
   return (
     <TouchableOpacity style={styles.productCard} activeOpacity={0.9} onPress={openDetail}>
-      {product.image_url ? (
-        <Image source={{ uri: product.image_url }} style={styles.productImage} />
-      ) : (
-        <Image source={product.image} style={styles.productImage} />
-      )}
+      <ProductImage product={product} style={styles.productImage} resizeMode="contain" />
       <View style={styles.favoriteWrap}>
         <FavoriteButton isFavorite={isFavorite} onPress={onToggleFavorite} />
       </View>
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{product.name}</Text>
-        <Text style={styles.productDetail}>Stock: {product.stockQuantity}</Text>
         <Text style={styles.productDetail}>Category: {product.category}</Text>
-        <Text style={styles.productDetail}>Location: {product.storeAvailability}</Text>
+        <Text style={styles.productDetail}>Material: {product.material}</Text>
+        <Text style={styles.productDetail}>Stock: {product.stockQuantity}</Text>
         <View style={styles.productFooter}>
           <StatusBadge status={product.status} />
           <Text style={styles.price}>{product.price}</Text>
-          <TouchableOpacity style={styles.arrowButton} activeOpacity={0.8} onPress={openDetail}>
+          <TouchableOpacity accessibilityLabel={`View ${product.name}`} style={styles.arrowButton} activeOpacity={0.8} onPress={openDetail}>
             <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>

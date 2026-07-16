@@ -1,9 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type CategoryCardProps = {
   name: string;
+  onPress: () => void;
 };
 
 const categoryIcons: Record<string, ComponentProps<typeof MaterialCommunityIcons>['name']> = {
@@ -17,9 +18,15 @@ const categoryIcons: Record<string, ComponentProps<typeof MaterialCommunityIcons
   Accessories: 'hammer-screwdriver',
 };
 
-export default function CategoryCard({ name }: CategoryCardProps) {
+export default function CategoryCard({ name, onPress }: CategoryCardProps) {
   return (
-    <TouchableOpacity style={styles.categoryCard} activeOpacity={0.86}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.categoryCard,
+        pressed && styles.categoryCardPressed,
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.iconShell}>
         <MaterialCommunityIcons
           name={categoryIcons[name] ?? 'door-closed'}
@@ -28,7 +35,7 @@ export default function CategoryCard({ name }: CategoryCardProps) {
         />
       </View>
       <Text style={styles.categoryText}>{name}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -47,6 +54,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.07,
     shadowRadius: 14,
     elevation: 3,
+  },
+  categoryCardPressed: {
+    opacity: 0.82,
+    transform: [{ scale: 0.98 }],
   },
   iconShell: {
     width: 48,

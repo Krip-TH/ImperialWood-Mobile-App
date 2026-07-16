@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Product, useAppContext } from '@/context/AppContext';
+import ProductImage from './ProductImage';
 
 type Props = { product: Product; variant: 'featured' | 'grid'; width?: number };
 
@@ -11,13 +12,12 @@ export default function HomeProductCard({ product, variant, width }: Props) {
   const { addToCart, favoriteIds, toggleFavorite } = useAppContext();
   const favorite = favoriteIds.includes(product.id);
   const openDetail = () => router.push({ pathname: '/product-detail', params: { id: product.id } });
-  const imageSource = product.image_url ? { uri: product.image_url } : product.image;
   const soldOut = product.status === 'Out of Stock';
 
   return (
     <View style={[styles.card, variant === 'featured' ? styles.featured : styles.grid, width ? { width } : null]}>
       <TouchableOpacity activeOpacity={0.88} onPress={openDetail}>
-        <Image source={imageSource} style={[styles.image, variant === 'featured' && styles.featuredImage]} resizeMode="cover" />
+        <ProductImage product={product} style={[styles.image, variant === 'featured' && styles.featuredImage]} resizeMode="cover" />
       </TouchableOpacity>
       <TouchableOpacity style={styles.favorite} onPress={() => toggleFavorite(product.id)}>
         <Ionicons name={favorite ? 'heart' : 'heart-outline'} size={18} color={favorite ? '#C89B3C' : '#3B2416'} />

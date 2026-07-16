@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
-import { Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
+import ProductImage from '@/components/ProductImage';
 import { useAppContext } from '@/context/AppContext';
 
 export default function CartScreen() {
@@ -32,7 +33,7 @@ export default function CartScreen() {
               {cartItems.map(({ product, quantity }) => (
                 <View key={product.id} style={styles.item}>
                   <TouchableOpacity onPress={() => router.push({ pathname: '/product-detail', params: { id: product.id } })}>
-                    <Image source={product.image_url ? { uri: product.image_url } : product.image} style={styles.image} resizeMode="cover" />
+                    <ProductImage product={product} style={styles.image} resizeMode="cover" />
                   </TouchableOpacity>
                   <View style={styles.itemInfo}>
                     <Text numberOfLines={2} style={styles.itemName}>{product.name}</Text>

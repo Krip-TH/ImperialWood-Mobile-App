@@ -1,12 +1,13 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '@/components/BottomNavigation';
 import BrandLogo from '@/components/BrandLogo';
 import FavoriteButton from '@/components/FavoriteButton';
 import Header from '@/components/Header';
+import ProductImage from '@/components/ProductImage';
 import StatusBadge from '@/components/StatusBadge';
 import { Product, useAppContext } from '@/context/AppContext';
 import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
@@ -36,7 +37,7 @@ export default function ProductDetailScreen() {
           return;
         }
 
-        setError('Unable to refresh the online catalog. Showing locally saved product data.');
+        setError('Showing offline product data.');
         setProduct(fallbackProducts.find((catalogProduct) => catalogProduct.id === id));
       } finally {
         if (!controller.signal.aborted) {
@@ -70,15 +71,7 @@ export default function ProductDetailScreen() {
         ) : product ? (
           <>
             <View style={styles.imageCard}>
-              {product.image_url ? (
-                <Image
-                  source={{ uri: product.image_url }}
-                  style={styles.detailImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <Image source={product.image} style={styles.detailImage} resizeMode="contain" />
-              )}
+              <ProductImage product={product} style={styles.detailImage} resizeMode="contain" />
             </View>
             <View style={styles.detailCard}>
               <View style={styles.detailHeaderRow}>
