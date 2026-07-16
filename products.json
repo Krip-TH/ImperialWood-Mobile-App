@@ -87,7 +87,7 @@
     "size": "90 x 200 cm",
     "finish": "Natural golden teak",
     "description": "A substantial solid teak door selected for its golden grain and timeless presence.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/royal-teak-solid-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/royal-teak-solid-door.jpg"
   },
   {
     "id": "heritage-mahogany-solid-door",
@@ -105,7 +105,7 @@
     "size": "90 x 210 cm",
     "finish": "Deep mahogany satin",
     "description": "A rich solid mahogany door with heritage proportions and a deep satin finish.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/heritage-mahogany-solid-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/heritage-mahogany-solid-door.jpg"
   },
   {
     "id": "linear-black-oak-door",
@@ -123,7 +123,7 @@
     "size": "90 x 200 cm",
     "finish": "Matte black oak",
     "description": "Linear detailing and a matte black oak finish create a precise modern statement.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/linear-black-oak-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/linear-black-oak-door.jpg"
   },
   {
     "id": "victorian-carved-teak-door",
@@ -141,7 +141,7 @@
     "size": "100 x 210 cm",
     "finish": "Hand-carved natural teak",
     "description": "A hand-carved teak design inspired by graceful Victorian architectural details.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/victorian-carved-teak-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/victorian-carved-teak-door.jpg"
   },
   {
     "id": "walnut-frosted-glass-door",
@@ -159,7 +159,7 @@
     "size": "90 x 200 cm",
     "finish": "Dark walnut with frosted glass",
     "description": "Dark walnut surrounds softly frosted glass for privacy with diffused natural light.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/walnut-frosted-glass-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/walnut-frosted-glass-door.jpg"
   },
   {
     "id": "grand-mahogany-entrance-door",
@@ -177,7 +177,7 @@
     "size": "110 x 220 cm",
     "finish": "Premium dark mahogany",
     "description": "An oversized mahogany entrance door designed to give refined homes a grand welcome.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/grand-mahogany-entrance-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/grand-mahogany-entrance-door.jpg"
   },
   {
     "id": "secure-teak-pivot-door",
@@ -195,7 +195,7 @@
     "size": "120 x 240 cm",
     "finish": "Natural teak with black hardware",
     "description": "A wide architectural pivot door combining natural teak with confident black hardware.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/secure-teak-pivot-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/secure-teak-pivot-door.jpg"
   },
   {
     "id": "white-oak-groove-interior-door",
@@ -213,7 +213,7 @@
     "size": "80 x 200 cm",
     "finish": "Light white oak",
     "description": "Fine vertical grooves bring subtle rhythm to this bright white oak interior door.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/white-oak-groove-interior-door.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/white-oak-groove-interior-door.jpg"
   },
   {
     "id": "premium-teak-door-frame",
@@ -231,7 +231,7 @@
     "size": "For 90 x 200 cm door",
     "finish": "Natural teak",
     "description": "A precision-made natural teak frame for a seamless premium door installation.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-teak-door-frame.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-teak-door-frame.jpg"
   },
   {
     "id": "walnut-adjustable-door-frame",
@@ -249,7 +249,7 @@
     "size": "Adjustable 80-100 cm",
     "finish": "Dark walnut",
     "description": "An adaptable dark walnut frame designed for refined installations across varied openings.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/walnut-adjustable-door-frame.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/walnut-adjustable-door-frame.jpg"
   },
   {
     "id": "imperial-brass-door-handle-set",
@@ -267,7 +267,7 @@
     "size": "Standard",
     "finish": "Brushed gold",
     "description": "A substantial brushed-gold brass handle set created to complement ImperialWood doors.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/imperial-brass-door-handle-set.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/imperial-brass-door-handle-set.jpg"
   },
   {
     "id": "premium-soft-close-hinge-set",
@@ -285,6 +285,6 @@
     "size": "Standard",
     "finish": "Matte black",
     "description": "A durable matte-black stainless steel hinge set engineered for smooth, quiet closing.",
-    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-soft-close-hinge-set.png"
+    "image_url": "https://raw.githubusercontent.com/Krip-TH/ImperialWood-Mobile-App/refs/heads/main/assets/products/premium-soft-close-hinge-set.jpg"
   }
 ]
