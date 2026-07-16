@@ -1,21 +1,29 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '@/components/BottomNavigation';
 import BrandLogo from '@/components/BrandLogo';
+import CategoryIcon from '@/components/CategoryIcon';
 import DashboardCard from '@/components/DashboardCard';
+import FilterModal, { defaultFilters, HomeFilters } from '@/components/FilterModal';
 import Header from '@/components/Header';
+import HeroBanner from '@/components/HeroBanner';
+import HomeProductCard from '@/components/HomeProductCard';
+import SearchBar from '@/components/SearchBar';
 import { useAppContext, UserRole } from '@/context/AppContext';
+import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
 
 export default function HomeScreen() {
   const {
@@ -151,54 +159,117 @@ function LoginPanel({
 }
 
 function ClientHome({
-  totalProducts,
-  totalFavorites,
-  totalCategories,
+  totalProducts: _totalProducts,
+  totalFavorites: _totalFavorites,
+  totalCategories: _totalCategories,
 }: {
   totalProducts: number;
   totalFavorites: number;
   totalCategories: number;
 }) {
   const router = useRouter();
-  const clientCards = [
-    { label: 'Browse Products', icon: 'albums-outline' as const, action: () => router.push('/products') },
-    { label: 'View Categories', icon: 'grid-outline' as const, action: () => router.push('/categories') },
-    { label: 'Favorite Items', icon: 'heart-outline' as const, action: () => router.push('/favorites') },
+  const { width } = useWindowDimensions();
+  const { products, replaceProducts } = useAppContext();
+  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<HomeFilters>(defaultFilters);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState('');
+  const categories = [
+    { label: 'Entrance', category: 'Entrance Doors', icon: 'home-outline' as const },
+    { label: 'Interior', category: 'Interior Doors', icon: 'square-outline' as const },
+    { label: 'Classic', category: 'Classic Doors', icon: 'ribbon-outline' as const },
+    { label: 'Modern', category: 'Modern Doors', icon: 'grid-outline' as const },
+    { label: 'Glass Panel', category: 'Glass Panel Doors', icon: 'apps-outline' as const },
+    { label: 'More', category: 'All', icon: 'ellipsis-horizontal-circle-outline' as const },
   ];
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadCatalog() {
+      try {
+        const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
+        if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
+        const downloaded = parseProducts(await response.json());
+        replaceProducts(downloaded);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        replaceProducts(fallbackProducts);
+        setCatalogError('Online catalog unavailable. Showing the saved collection.');
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false);
+      }
+    }
+    void loadCatalog();
+    return () => controller.abort();
+  }, [replaceProducts]);
+
+  const filteredProducts = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    const parseNumber = (value: string) => Number(value.replace(/[^0-9.]/g, '')) || 0;
+    const result = products.filter((product) => {
+      const searchable = [product.name, product.category, product.material, product.finish, product.itemCode].join(' ').toLowerCase();
+      const price = parseNumber(product.price);
+      const priceMatches = filters.priceRange === 'All prices'
+        || (filters.priceRange === 'Under THB 20,000' && price < 20000)
+        || (filters.priceRange === 'THB 20,000–25,000' && price >= 20000 && price <= 25000)
+        || (filters.priceRange === 'Over THB 25,000' && price > 25000);
+      const storeMatches = filters.storeAvailability === 'All'
+        || (filters.storeAvailability === 'Online only' && product.storeAvailability.toLowerCase().includes('online'))
+        || (filters.storeAvailability === 'In stores' && !product.storeAvailability.toLowerCase().includes('online'));
+      return (!normalizedQuery || searchable.includes(normalizedQuery))
+        && (filters.category === 'All' || product.category === filters.category)
+        && (filters.material === 'All' || product.material === filters.material)
+        && (filters.availability === 'All' || product.status === filters.availability)
+        && priceMatches && storeMatches;
+    });
+    return [...result].sort((a, b) => {
+      if (filters.sort === 'Price: Low to High') return parseNumber(a.price) - parseNumber(b.price);
+      if (filters.sort === 'Price: High to Low') return parseNumber(b.price) - parseNumber(a.price);
+      if (filters.sort === 'Name: A-Z') return a.name.localeCompare(b.name);
+      if (filters.sort === 'Stock: High to Low') return parseNumber(b.stockQuantity) - parseNumber(a.stockQuantity);
+      return 0;
+    });
+  }, [filters, products, query]);
+
+  const contentWidth = Math.min(width - 40, 1180);
+  const columns = width >= 1100 ? 4 : width >= 720 ? 3 : 2;
+  const cardWidth = Math.max(145, (contentWidth - 12 * (columns - 1)) / columns);
+  const selectCategory = (category: string, label: string) => {
+    if (label === 'More') { router.push('/categories'); return; }
+    setFilters((current) => ({ ...current, category: current.category === category ? 'All' : category }));
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#F7F1E8" />
       <Header title="Home" />
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroPanel}>
-          <BrandLogo light />
-          <Text style={styles.heroTitle}>ImperialWood</Text>
-          <Text style={styles.heroSystemTitle}>Premium Wooden Door Management System</Text>
-          <Text style={styles.heroText}>
-            Manage inventory, collections, stock and customer favorites.
-          </Text>
-        </View>
+      <ScrollView contentContainerStyle={styles.clientContainer} showsVerticalScrollIndicator={false}>
+        <SearchBar value={query} onChangeText={setQuery} onClear={() => setQuery('')} onOpenFilters={() => setFilterOpen(true)} />
+        {query ? <TouchableOpacity onPress={() => setQuery('')}><Text style={styles.clearSearch}>Clear Search</Text></TouchableOpacity> : null}
+        <View style={styles.clientHero}><HeroBanner onPress={() => router.push('/products')} /></View>
 
-        <Text style={styles.sectionTitle}>Client Overview</Text>
-        <View style={styles.grid}>
-          <DashboardCard label="Total Doors" value={String(totalProducts)} icon="albums-outline" />
-          <DashboardCard label="Favorites" value={String(totalFavorites)} icon="heart-outline" />
-          <DashboardCard label="Categories" value={String(totalCategories)} icon="grid-outline" />
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+          {categories.map((category) => <CategoryIcon key={category.label} label={category.label} icon={category.icon} active={category.label !== 'More' && filters.category === category.category} onPress={() => selectCategory(category.category, category.label)} />)}
+        </ScrollView>
 
-        <Text style={[styles.sectionTitle, styles.sectionSpacing]}>Quick Actions</Text>
-        <View style={styles.grid}>
-          {clientCards.map((card) => (
-            <DashboardCard
-              key={card.label}
-              label={card.label}
-              icon={card.icon}
-              onPress={card.action}
-            />
-          ))}
-        </View>
+        {catalogError ? <Text style={styles.catalogError}>{catalogError}</Text> : null}
+        {isLoading ? <View style={styles.homeLoading}><ActivityIndicator color="#C89B3C" /><Text style={styles.loadingText}>Curating the collection...</Text></View> : null}
+        {!isLoading && filteredProducts.length === 0 ? (
+          <View style={styles.noResults}><Text style={styles.noResultsTitle}>No products found</Text><Text style={styles.noResultsText}>Try clearing the search or adjusting your filters.</Text></View>
+        ) : null}
+        {filteredProducts.length > 0 ? (
+          <>
+            <View style={styles.sectionHeader}><Text style={styles.clientSectionTitle}>Featured Doors</Text><TouchableOpacity onPress={() => router.push('/products')}><Text style={styles.seeAll}>See all</Text></TouchableOpacity></View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+              {filteredProducts.slice(0, 6).map((product) => <HomeProductCard key={product.id} product={product} variant="featured" />)}
+            </ScrollView>
+            <View style={[styles.sectionHeader, styles.popularHeader]}><Text style={styles.clientSectionTitle}>Popular Doors</Text><Text style={styles.resultCount}>{filteredProducts.length} doors</Text></View>
+            <View style={styles.productGrid}>{filteredProducts.map((product) => <HomeProductCard key={product.id} product={product} variant="grid" width={cardWidth} />)}</View>
+          </>
+        ) : null}
       </ScrollView>
+      <FilterModal visible={filterOpen} value={filters} onClose={() => setFilterOpen(false)} onApply={setFilters} />
       <BottomNavigation />
     </SafeAreaView>
   );
@@ -429,6 +500,23 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 112,
   },
+  clientContainer: { width: '100%', maxWidth: 1220, alignSelf: 'center', paddingHorizontal: 20, paddingTop: 8, paddingBottom: 118 },
+  clearSearch: { alignSelf: 'flex-end', color: '#6B4423', fontSize: 12, fontWeight: '900', marginTop: 8, marginRight: 4 },
+  clientHero: { marginTop: 18 },
+  categoryRow: { paddingVertical: 22, gap: 8 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  clientSectionTitle: { color: '#3B2416', fontSize: 21, fontWeight: '900' },
+  seeAll: { color: '#C08928', fontSize: 12, fontWeight: '900' },
+  featuredRow: { paddingBottom: 8 },
+  popularHeader: { marginTop: 24 },
+  resultCount: { color: '#8A7765', fontSize: 11, fontWeight: '700' },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  catalogError: { color: '#8A4B22', backgroundColor: '#FFF4E8', borderRadius: 14, borderWidth: 1, borderColor: '#E5C4A6', padding: 11, marginBottom: 14, fontSize: 12, fontWeight: '700' },
+  homeLoading: { flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', padding: 28 },
+  loadingText: { color: '#6B4423', fontSize: 13, fontWeight: '700' },
+  noResults: { alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5D6C3', borderRadius: 22, padding: 28, marginTop: 4 },
+  noResultsTitle: { color: '#3B2416', fontSize: 18, fontWeight: '900' },
+  noResultsText: { color: '#8A7765', fontSize: 12, marginTop: 6, textAlign: 'center' },
   heroPanel: {
     backgroundColor: '#3B2416',
     borderRadius: 28,

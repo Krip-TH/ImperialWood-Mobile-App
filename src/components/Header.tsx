@@ -1,9 +1,10 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState, type ComponentProps } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
 import BrandLogo from '@/components/BrandLogo';
+import CartButton from '@/components/CartButton';
 import { useAppContext } from '@/context/AppContext';
 
 type HeaderProps = {
@@ -19,17 +20,24 @@ type MenuItem = {
 export default function Header({ title }: HeaderProps) {
   const router = useRouter();
   const { logout, role } = useAppContext();
+  const { width } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const modeText = role === 'admin' ? 'Admin Workspace' : 'Client Storefront';
-  const menuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: 'speedometer-outline', action: () => router.push('/') },
+  const commonMenuItems: MenuItem[] = [
+    { label: 'Home', icon: 'home-outline', action: () => router.push('/') },
     { label: 'Products', icon: 'albums-outline', action: () => router.push('/products') },
-    { label: 'Add Product', icon: 'add-circle-outline', action: () => router.push('/add') },
     { label: 'Categories', icon: 'grid-outline', action: () => router.push('/categories') },
-    { label: 'Stores', icon: 'business-outline', action: () => router.push('/stores') },
+    { label: 'Stores', icon: 'storefront-outline', action: () => router.push('/stores') },
     { label: 'Favorites', icon: 'heart-outline', action: () => router.push('/favorites') },
+  ];
+  const adminMenuItems: MenuItem[] = [
+    { label: 'Add Product', icon: 'add-circle-outline', action: () => router.push('/add') },
     { label: 'Reports', icon: 'bar-chart-outline', action: () => router.push('/reports') },
     { label: 'Settings', icon: 'settings-outline', action: () => router.push('/settings') },
+  ];
+  const menuItems: MenuItem[] = [
+    ...commonMenuItems,
+    ...(role === 'admin' ? adminMenuItems : []),
     {
       label: 'Logout',
       icon: 'log-out-outline',
@@ -56,21 +64,26 @@ export default function Header({ title }: HeaderProps) {
         <Ionicons name="menu" size={24} color="#3B2416" />
       </TouchableOpacity>
 
-      <View style={styles.titleWrap}>
-        <BrandLogo compact />
-        <Text style={styles.subtitle}>{title}</Text>
+      <View style={styles.titleWrap} pointerEvents="none">
+        {role === 'client' && title === 'Home' ? <Text style={styles.brandTitle}>ImperialWood</Text> : <BrandLogo compact />}
+        <Text style={styles.subtitle}>{role === 'client' && title === 'Home' ? 'Premium Wooden Doors' : title}</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.logoutButton}
-        activeOpacity={0.8}
-        onPress={() => {
-          logout();
-          router.replace('/');
-        }}
-      >
-        <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
-      </TouchableOpacity>
+      {role === 'client' && title === 'Home' ? (
+        <View style={styles.clientActions}>
+          <TouchableOpacity style={styles.clientIcon} onPress={() => undefined}><Ionicons name="notifications-outline" size={20} color="#3B2416" /></TouchableOpacity>
+          <CartButton compact />
+          {width >= 700 ? <TouchableOpacity style={styles.clientIcon} onPress={() => router.push('/settings')}><Ionicons name="person-outline" size={20} color="#3B2416" /></TouchableOpacity> : null}
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={styles.logoutButton}
+          activeOpacity={0.8}
+          onPress={() => { logout(); router.replace('/'); }}
+        >
+          <Ionicons name="log-out-outline" size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
 
       <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={closeMenu}>
         <View style={styles.overlayRoot}>
@@ -136,8 +149,12 @@ const styles = StyleSheet.create({
   },
   titleWrap: {
     alignItems: 'center',
-    flex: 1,
+    position: 'absolute',
+    left: '50%',
+    width: 160,
+    marginLeft: -80,
   },
+  brandTitle: { color: '#3B2416', fontSize: 18, fontWeight: '900', letterSpacing: 0.2 },
   subtitle: {
     color: '#6B4423',
     fontSize: 12,
@@ -152,6 +169,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  clientActions: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 7 },
+  clientIcon: { width: 38, height: 38, borderRadius: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5D6C3', alignItems: 'center', justifyContent: 'center' },
   overlayRoot: {
     flex: 1,
     flexDirection: 'row',

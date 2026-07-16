@@ -1,4 +1,5 @@
-import { createContext, ReactNode, useCallback, useContext, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ImageSourcePropType } from 'react-native';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
@@ -21,11 +22,19 @@ export type Product = {
   status: ProductStatus;
 };
 
+export type CartItem = {
+  product: Product;
+  quantity: number;
+};
+
 type AppContextValue = {
   role: UserRole | null;
   products: Product[];
   favoriteIds: string[];
   favoriteProducts: Product[];
+  cartItems: CartItem[];
+  cartItemCount: number;
+  cartSubtotal: number;
   categoryList: string[];
   addProductCategories: string[];
   materialOptions: string[];
@@ -39,6 +48,10 @@ type AppContextValue = {
   addProduct: (product: Product) => void;
   replaceProducts: (products: Product[]) => void;
   toggleFavorite: (productId: string) => void;
+  addToCart: (product: Product) => void;
+  increaseCartItem: (productId: string) => void;
+  decreaseCartItem: (productId: string) => void;
+  removeFromCart: (productId: string) => void;
   deleteProduct: (productId: string) => void;
   deleteSampleProduct: () => void;
   clearFavorites: () => void;
@@ -133,11 +146,18 @@ export const sizeOptions = ['70 x 200 cm', '80 x 200 cm', '90 x 200 cm', 'Custom
 export const storeOptions = ['1 store', '2 stores', '3 stores', 'Online only'];
 
 const AppContext = createContext<AppContextValue | null>(null);
+const CART_STORAGE_KEY = '@imperialwood/cart';
+
+function numericPrice(price: string) {
+  return Number(price.replace(/[^0-9.]/g, '')) || 0;
+}
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+  const [cartReady, setCartReady] = useState(false);
   const [nextItemNumber, setNextItemNumber] = useState(5);
   const [notice, setNotice] = useState('');
   const replaceProducts = useCallback((catalogProducts: Product[]) => {
@@ -145,11 +165,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const favoriteProducts = products.filter((product) => favoriteIds.includes(product.id));
+  const cartItems = products
+    .filter((product) => Boolean(cartQuantities[product.id]))
+    .map((product) => ({ product, quantity: cartQuantities[product.id] }));
+  const cartItemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const cartSubtotal = cartItems.reduce(
+    (total, item) => total + numericPrice(item.product.price) * item.quantity,
+    0
+  );
   const totalStock = products.reduce(
     (total, product) => total + Number.parseInt(product.stockQuantity, 10),
     0
   );
   const nextItemCode = `IW-${String(nextItemNumber).padStart(3, '0')}`;
+
+  useEffect(() => {
+    AsyncStorage.getItem(CART_STORAGE_KEY)
+      .then((savedCart) => {
+        if (savedCart) {
+          const parsed: unknown = JSON.parse(savedCart);
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            setCartQuantities(parsed as Record<string, number>);
+          }
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => setCartReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (cartReady) {
+      void AsyncStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartQuantities));
+    }
+  }, [cartQuantities, cartReady]);
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -157,6 +205,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       products,
       favoriteIds,
       favoriteProducts,
+      cartItems,
+      cartItemCount,
+      cartSubtotal,
       categoryList,
       addProductCategories,
       materialOptions,
@@ -197,6 +248,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : [...currentFavorites, productId]
         );
       },
+      addToCart: (product) => {
+        if (product.status === 'Out of Stock') return;
+        setCartQuantities((current) => ({
+          ...current,
+          [product.id]: (current[product.id] ?? 0) + 1,
+        }));
+        setNotice(`${product.name} added to cart.`);
+      },
+      increaseCartItem: (productId) => {
+        setCartQuantities((current) => ({
+          ...current,
+          [productId]: (current[productId] ?? 0) + 1,
+        }));
+      },
+      decreaseCartItem: (productId) => {
+        setCartQuantities((current) => {
+          const nextQuantity = (current[productId] ?? 0) - 1;
+          if (nextQuantity <= 0) {
+            const { [productId]: _removed, ...remaining } = current;
+            return remaining;
+          }
+          return { ...current, [productId]: nextQuantity };
+        });
+      },
+      removeFromCart: (productId) => {
+        setCartQuantities((current) => {
+          const { [productId]: _removed, ...remaining } = current;
+          return remaining;
+        });
+      },
       deleteProduct: (productId) => {
         setProducts((currentProducts) =>
           currentProducts.filter((product) => product.id !== productId)
@@ -230,7 +311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       getProductById: (productId) => products.find((product) => product.id === productId),
     }),
-    [favoriteIds, favoriteProducts, nextItemCode, notice, products, replaceProducts, role, totalStock]
+    [cartItemCount, cartItems, cartSubtotal, favoriteIds, favoriteProducts, nextItemCode, notice, products, replaceProducts, role, totalStock]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
