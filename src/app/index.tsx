@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,7 +6,6 @@ import {
   StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   useWindowDimensions,
   View,
@@ -22,13 +21,12 @@ import Header from '@/components/Header';
 import HeroBanner from '@/components/HeroBanner';
 import HomeProductCard from '@/components/HomeProductCard';
 import SearchBar from '@/components/SearchBar';
-import { useAppContext, UserRole } from '@/context/AppContext';
+import { useAppContext } from '@/context/AppContext';
 import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
 
 export default function HomeScreen() {
   const {
     role,
-    login,
     products,
     favoriteIds,
     categoryList,
@@ -47,7 +45,7 @@ export default function HomeScreen() {
   };
 
   if (!role) {
-    return <LoginPanel onLogin={login} />;
+    return <Redirect href="/login" />;
   }
 
   if (role === 'client') {
@@ -70,91 +68,6 @@ export default function HomeScreen() {
       onDeleteSampleProduct={deleteFirstProduct}
       onClearFavorites={clearFavorites}
     />
-  );
-}
-
-function LoginPanel({
-  onLogin,
-}: {
-  onLogin: (role: UserRole, username: string, password: string) => boolean;
-}) {
-  const [selectedRole, setSelectedRole] = useState<UserRole>('client');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [message, setMessage] = useState('');
-
-  const submitLogin = () => {
-    const isValid = onLogin(selectedRole, username, password);
-
-    if (!isValid) {
-      setMessage('Invalid demo account. Try client/1234 or admin/1234.');
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F7F1E8" />
-      <View style={styles.loginContainer}>
-        <View style={styles.loginLogoCard}>
-          <BrandLogo />
-        </View>
-        <Text style={styles.loginLogo}>ImperialWood</Text>
-        <Text style={styles.loginSubtitle}>Premium Wooden Door Collection</Text>
-        <Text style={styles.loginTagline}>Luxury Solid Wood Doors</Text>
-
-        <View style={styles.loginCard}>
-          <Text style={styles.loginTitle}>Choose Login Role</Text>
-          <View style={styles.roleRow}>
-            {(['client', 'admin'] as UserRole[]).map((roleOption) => {
-              const isSelected = selectedRole === roleOption;
-
-              return (
-                <TouchableOpacity
-                  key={roleOption}
-                  style={[styles.roleButton, isSelected && styles.roleButtonActive]}
-                  activeOpacity={0.85}
-                  onPress={() => setSelectedRole(roleOption)}
-                >
-                  <Text style={[styles.roleText, isSelected && styles.roleTextActive]}>
-                    {roleOption === 'client' ? 'Client' : 'Admin'}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Username</Text>
-            <TextInput
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              placeholder="Enter username"
-              placeholderTextColor="#8B8B7A"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Enter password"
-              placeholderTextColor="#8B8B7A"
-              secureTextEntry
-            />
-          </View>
-
-          {message ? <Text style={styles.warningText}>{message}</Text> : null}
-
-          <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={submitLogin}>
-            <Text style={styles.primaryButtonText}>Login</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </SafeAreaView>
   );
 }
 
@@ -356,133 +269,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F7F1E8',
-  },
-  loginContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  loginLogoCard: {
-    width: '100%',
-    maxWidth: 320,
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderRadius: 28,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5D6C3',
-    paddingVertical: 28,
-    paddingHorizontal: 18,
-    shadowColor: '#3B2416',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.11,
-    shadowRadius: 22,
-    elevation: 6,
-  },
-  loginLogo: {
-    color: '#3B2416',
-    fontSize: 34,
-    fontWeight: '900',
-    textAlign: 'center',
-  },
-  loginSubtitle: {
-    color: '#6B4423',
-    fontSize: 14,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 8,
-  },
-  loginTagline: {
-    color: '#3B2416',
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  loginCard: {
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5D6C3',
-    shadowColor: '#3B2416',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 3,
-    padding: 20,
-  },
-  loginTitle: {
-    color: '#2B2118',
-    fontSize: 22,
-    fontWeight: '900',
-    marginBottom: 14,
-  },
-  roleRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 14,
-  },
-  roleButton: {
-    flex: 1,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5D6C3',
-    backgroundColor: '#F7F1E8',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  roleButtonActive: {
-    borderColor: '#C89B3C',
-    backgroundColor: '#3B2416',
-  },
-  roleText: {
-    color: '#3B2416',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  roleTextActive: {
-    color: '#FFFFFF',
-  },
-  inputGroup: {
-    marginBottom: 12,
-  },
-  inputLabel: {
-    color: '#3B2416',
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  input: {
-    minHeight: 46,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5D6C3',
-    backgroundColor: '#F7F1E8',
-    color: '#2B2118',
-    paddingHorizontal: 12,
-    fontSize: 14,
-  },
-  warningText: {
-    color: '#8A4B22',
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  primaryButton: {
-    minHeight: 48,
-    borderRadius: 16,
-    backgroundColor: '#3B2416',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
   },
   noticeText: {
     color: '#3B2416',

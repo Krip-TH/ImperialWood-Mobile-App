@@ -1,6 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+import { CustomerAccount, loadCustomerAccounts } from '@/lib/customerAccounts';
+
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
 export type UserRole = 'client' | 'admin';
 
@@ -27,6 +29,7 @@ export type CartItem = {
 
 type AppContextValue = {
   role: UserRole | null;
+  currentCustomer: CustomerAccount | null;
   products: Product[];
   favoriteIds: string[];
   favoriteProducts: Product[];
@@ -41,7 +44,7 @@ type AppContextValue = {
   notice: string;
   nextItemCode: string;
   totalStock: number;
-  login: (role: UserRole, username: string, password: string) => boolean;
+  login: (role: UserRole, username: string, password: string) => Promise<boolean>;
   logout: () => void;
   addProduct: (product: Product) => void;
   replaceProducts: (products: Product[]) => void;
@@ -152,6 +155,7 @@ function numericPrice(price: string) {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<CustomerAccount | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
@@ -160,6 +164,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notice, setNotice] = useState('');
   const replaceProducts = useCallback((catalogProducts: Product[]) => {
     setProducts(catalogProducts);
+  }, []);
+  const login = useCallback(async (
+    selectedRole: UserRole,
+    username: string,
+    password: string
+  ): Promise<boolean> => {
+    if (selectedRole === 'admin') {
+      const isAdminLogin = username === 'Krip' && password === 'b73882548';
+
+      if (isAdminLogin) {
+        setRole('admin');
+        setCurrentCustomer(null);
+        setNotice('');
+      }
+
+      return isAdminLogin;
+    }
+
+    const accounts = await loadCustomerAccounts();
+    const customer = accounts.find(
+      (account) => account.username === username && account.password === password
+    );
+
+    if (!customer) return false;
+
+    setRole('client');
+    setCurrentCustomer(customer);
+    setNotice('');
+    return true;
   }, []);
 
   const favoriteProducts = products.filter((product) => favoriteIds.includes(product.id));
@@ -200,6 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppContextValue>(
     () => ({
       role,
+      currentCustomer,
       products,
       favoriteIds,
       favoriteProducts,
@@ -214,23 +248,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       notice,
       nextItemCode,
       totalStock,
-      login: (selectedRole, username, password) => {
-        const normalizedUsername = username.trim().toLowerCase();
-        const isClientLogin =
-          selectedRole === 'client' && normalizedUsername === 'client' && password === '1234';
-        const isAdminLogin =
-          selectedRole === 'admin' && normalizedUsername === 'admin' && password === '1234';
-
-        if (isClientLogin || isAdminLogin) {
-          setRole(selectedRole);
-          setNotice('');
-          return true;
-        }
-
-        return false;
-      },
+      login,
       logout: () => {
         setRole(null);
+        setCurrentCustomer(null);
         setNotice('');
       },
       addProduct: (product) => {
@@ -309,7 +330,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       getProductById: (productId) => products.find((product) => product.id === productId),
     }),
-    [cartItemCount, cartItems, cartSubtotal, favoriteIds, favoriteProducts, nextItemCode, notice, products, replaceProducts, role, totalStock]
+    [cartItemCount, cartItems, cartSubtotal, currentCustomer, favoriteIds, favoriteProducts, login, nextItemCode, notice, products, replaceProducts, role, totalStock]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
