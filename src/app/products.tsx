@@ -17,7 +17,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
 import ProductCard from '@/components/ProductCard';
 import { Product, useAppContext } from '@/context/AppContext';
-import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
+import { getProducts } from '@/services/productService';
 
 const productCategories = [
   'All',
@@ -43,27 +43,26 @@ export default function ProductsScreen() {
   const selectedCategory = requestedCategory?.trim() || 'All';
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
 
     async function loadProducts() {
       try {
-        const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
-        if (!response.ok) throw new Error(`Product request failed with status ${response.status}.`);
-        const downloadedProducts = parseProducts(await response.json(), true);
-        setProducts(downloadedProducts);
-        replaceProducts(downloadedProducts);
+        const result = await getProducts();
+        if (!active) return;
+        setProducts(result.products);
+        replaceProducts(result.products);
+        setShowOfflineWarning(result.source !== 'api');
       } catch (requestError) {
-        if (requestError instanceof Error && requestError.name === 'AbortError') return;
-        setShowOfflineWarning(true);
-        setProducts(fallbackProducts);
-        replaceProducts(fallbackProducts);
+        if (active) setShowOfflineWarning(true);
       } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     }
 
     void loadProducts();
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, [replaceProducts]);
 
   const visibleProducts = useMemo(() => {

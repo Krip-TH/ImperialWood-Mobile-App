@@ -22,7 +22,7 @@ import HeroBanner from '@/components/HeroBanner';
 import HomeProductCard from '@/components/HomeProductCard';
 import SearchBar from '@/components/SearchBar';
 import { useAppContext } from '@/context/AppContext';
-import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
+import { getProducts } from '@/services/productService';
 
 export default function HomeScreen() {
   const {
@@ -98,23 +98,29 @@ function ClientHome({
   ];
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
     async function loadCatalog() {
       try {
-        const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
-        if (!response.ok) throw new Error(`Catalog request failed: ${response.status}`);
-        const downloaded = parseProducts(await response.json(), true);
-        replaceProducts(downloaded);
+        const result = await getProducts();
+        if (!active) return;
+        replaceProducts(result.products);
+        if (result.source !== 'api') {
+          setCatalogError(
+            result.source === 'github'
+              ? 'API unavailable. Showing GitHub product data.'
+              : 'Showing offline product data.'
+          );
+        }
       } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') return;
-        replaceProducts(fallbackProducts);
-        setCatalogError('Showing offline product data.');
+        if (active) setCatalogError('Product data could not be loaded.');
       } finally {
-        if (!controller.signal.aborted) setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     }
     void loadCatalog();
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, [replaceProducts]);
 
   const filteredProducts = useMemo(() => {

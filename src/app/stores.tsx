@@ -24,25 +24,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
 import { useAppContext } from '@/context/AppContext';
+import { getStores, StoreRecord } from '@/services/storeService';
 
-type Store = {
-  id: string;
-  city: string;
-  country: string;
-  employees: string;
-  items: string;
-  orders: string;
-  refunds: string;
-  mostSoldProduct: string;
-  popularCategory: string;
-  satisfaction: string;
-  businessDays: string;
-  openingTime: string;
-  closingTime: string;
-  closedDay: string;
-  timezone: string;
-  images: string[];
-};
+type Store = StoreRecord;
 
 const LEGACY_STORAGE_KEY = 'imperialwood_stores';
 const STORAGE_KEYS: Record<string, string> = {
@@ -131,6 +115,17 @@ export default function StoresScreen() {
   useEffect(() => {
     let active = true;
     const loadStores = async () => {
+      try {
+        const remoteStores = await getStores();
+        if (active && remoteStores.length > 0) {
+          setStores(remoteStores);
+          return;
+        }
+        throw new Error('The API returned no stores.');
+      } catch (apiError) {
+        console.warn('Using locally saved store data:', apiError);
+      }
+
       try {
         const savedStores = await AsyncStorage.multiGet(Object.values(STORAGE_KEYS));
         if (__DEV__) console.log('Loaded stores from storage', savedStores);

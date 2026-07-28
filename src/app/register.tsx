@@ -16,13 +16,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BrandLogo from '@/components/BrandLogo';
 import { useAppContext } from '@/context/AppContext';
-import {
-  createCustomerId,
-  CustomerAccount,
-  loadCustomerAccounts,
-  saveCustomerAccounts,
-} from '@/lib/customerAccounts';
 import { showAlert } from '@/lib/showAlert';
+import { ApiError, setAuthToken } from '@/services/api';
+import { register } from '@/services/authService';
 
 type FormState = {
   fullName: string;
@@ -84,28 +80,16 @@ export default function RegisterScreen() {
 
     setIsSubmitting(true);
     try {
-      const accounts = await loadCustomerAccounts();
       const normalizedUsername = form.username.trim();
-      const usernameExists = accounts.some(
-        (account) => account.username.toLowerCase() === normalizedUsername.toLowerCase()
-      );
-
-      if (usernameExists) {
-        showAlert('Username unavailable', 'This username is already registered.');
-        return;
-      }
-
-      const account: CustomerAccount = {
-        id: createCustomerId(accounts),
+      const account = await register({
         fullName: form.fullName.trim(),
         username: normalizedUsername,
         email: form.email.trim(),
         phone: form.phone.trim(),
         password: form.password,
-        createdAt: new Date().toISOString(),
-      };
-
-      await saveCustomerAccounts([...accounts, account]);
+      });
+      // Registration returns a token, but this screen intentionally returns to Login.
+      await setAuthToken(null);
       showAlert('Success', 'Account created successfully');
 
       try {
@@ -119,7 +103,11 @@ export default function RegisterScreen() {
       }
     } catch (error) {
       console.error('Failed to create customer account:', error);
-      showAlert('Registration unavailable', 'Your account could not be saved. Please try again.');
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : 'Your account could not be saved. Please try again.';
+      showAlert('Registration unavailable', message);
     } finally {
       setIsSubmitting(false);
     }

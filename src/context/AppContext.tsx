@@ -1,7 +1,19 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { CustomerAccount, loadCustomerAccounts } from '@/lib/customerAccounts';
+import { ApiError } from '@/services/api';
+import { AuthUser, login as loginWithApi, logout as logoutFromApi } from '@/services/authService';
+import {
+  addCartItem,
+  getCart,
+  removeCartItem,
+  updateCartItem,
+} from '@/services/cartService';
+import { getCategories } from '@/services/categoryService';
+import {
+  getFavorites,
+  toggleFavorite as toggleFavoriteWithApi,
+} from '@/services/favoriteService';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
 export type UserRole = 'client' | 'admin';
@@ -29,7 +41,7 @@ export type CartItem = {
 
 type AppContextValue = {
   role: UserRole | null;
-  currentCustomer: CustomerAccount | null;
+  currentCustomer: AuthUser | null;
   products: Product[];
   favoriteIds: string[];
   favoriteProducts: Product[];
@@ -155,10 +167,11 @@ function numericPrice(price: string) {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null);
-  const [currentCustomer, setCurrentCustomer] = useState<CustomerAccount | null>(null);
+  const [currentCustomer, setCurrentCustomer] = useState<AuthUser | null>(null);
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>({});
+  const [categories, setCategories] = useState<string[]>(categoryList);
   const [cartReady, setCartReady] = useState(false);
   const [nextItemNumber, setNextItemNumber] = useState(5);
   const [notice, setNotice] = useState('');
@@ -170,29 +183,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     username: string,
     password: string
   ): Promise<boolean> => {
-    if (selectedRole === 'admin') {
-      const isAdminLogin = username === 'Krip' && password === 'b73882548';
+    try {
+      const user = await loginWithApi(selectedRole, username.trim(), password);
+      setRole(user.role);
+      setCurrentCustomer(user.role === 'client' ? user : null);
+      setNotice('');
 
-      if (isAdminLogin) {
-        setRole('admin');
-        setCurrentCustomer(null);
-        setNotice('');
+      if (user.role === 'client') {
+        const [remoteFavorites, remoteCart] = await Promise.allSettled([
+          getFavorites(),
+          getCart(),
+        ]);
+        if (remoteFavorites.status === 'fulfilled') {
+          setFavoriteIds(remoteFavorites.value);
+        }
+        if (remoteCart.status === 'fulfilled') {
+          setCartQuantities(
+            Object.fromEntries(
+              remoteCart.value.map((item) => [item.productId, item.quantity])
+            )
+          );
+        }
       }
-
-      return isAdminLogin;
+      return true;
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return false;
+      throw error;
     }
-
-    const accounts = await loadCustomerAccounts();
-    const customer = accounts.find(
-      (account) => account.username === username && account.password === password
-    );
-
-    if (!customer) return false;
-
-    setRole('client');
-    setCurrentCustomer(customer);
-    setNotice('');
-    return true;
   }, []);
 
   const favoriteProducts = products.filter((product) => favoriteIds.includes(product.id));
@@ -230,6 +247,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [cartQuantities, cartReady]);
 
+  useEffect(() => {
+    if (!role) return;
+    let active = true;
+    void getCategories()
+      .then((remoteCategories) => {
+        if (active && remoteCategories.length > 0) setCategories(remoteCategories);
+      })
+      .catch((error) => console.warn('Using local categories:', error));
+    return () => {
+      active = false;
+    };
+  }, [role]);
+
   const value = useMemo<AppContextValue>(
     () => ({
       role,
@@ -240,8 +270,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       cartItems,
       cartItemCount,
       cartSubtotal,
-      categoryList,
-      addProductCategories,
+      categoryList: categories,
+      addProductCategories: categories,
       materialOptions,
       sizeOptions,
       storeOptions,
@@ -252,7 +282,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       logout: () => {
         setRole(null);
         setCurrentCustomer(null);
+        setFavoriteIds([]);
+        setCartQuantities({});
         setNotice('');
+        void logoutFromApi();
       },
       addProduct: (product) => {
         setProducts((currentProducts) => [product, ...currentProducts]);
@@ -261,11 +294,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       replaceProducts,
       toggleFavorite: (productId) => {
+        const wasFavorite = favoriteIds.includes(productId);
         setFavoriteIds((currentFavorites) =>
           currentFavorites.includes(productId)
             ? currentFavorites.filter((id) => id !== productId)
             : [...currentFavorites, productId]
         );
+        if (role === 'client') {
+          void toggleFavoriteWithApi(productId).catch((error) => {
+            console.error('Unable to update favorite:', error);
+            setFavoriteIds((currentFavorites) =>
+              wasFavorite
+                ? [...new Set([...currentFavorites, productId])]
+                : currentFavorites.filter((id) => id !== productId)
+            );
+          });
+        }
       },
       addToCart: (product) => {
         if (product.status === 'Out of Stock') return;
@@ -274,28 +318,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
           [product.id]: (current[product.id] ?? 0) + 1,
         }));
         setNotice(`${product.name} added to cart.`);
+        if (role === 'client') {
+          void addCartItem(product.id).catch((error) =>
+            console.error('Unable to sync cart item:', error)
+          );
+        }
       },
       increaseCartItem: (productId) => {
+        const nextQuantity = (cartQuantities[productId] ?? 0) + 1;
         setCartQuantities((current) => ({
           ...current,
           [productId]: (current[productId] ?? 0) + 1,
         }));
+        if (role === 'client') {
+          void updateCartItem(productId, nextQuantity).catch((error) =>
+            console.error('Unable to sync cart quantity:', error)
+          );
+        }
       },
       decreaseCartItem: (productId) => {
+        const nextQuantity = (cartQuantities[productId] ?? 0) - 1;
         setCartQuantities((current) => {
-          const nextQuantity = (current[productId] ?? 0) - 1;
           if (nextQuantity <= 0) {
             const { [productId]: _removed, ...remaining } = current;
             return remaining;
           }
           return { ...current, [productId]: nextQuantity };
         });
+        if (role === 'client') {
+          const sync = nextQuantity <= 0
+            ? removeCartItem(productId)
+            : updateCartItem(productId, nextQuantity);
+          void sync.catch((error) => console.error('Unable to sync cart quantity:', error));
+        }
       },
       removeFromCart: (productId) => {
         setCartQuantities((current) => {
           const { [productId]: _removed, ...remaining } = current;
           return remaining;
         });
+        if (role === 'client') {
+          void removeCartItem(productId).catch((error) =>
+            console.error('Unable to remove remote cart item:', error)
+          );
+        }
       },
       deleteProduct: (productId) => {
         setProducts((currentProducts) =>
@@ -325,12 +391,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
       },
       clearFavorites: () => {
+        const idsToClear = favoriteIds;
         setFavoriteIds([]);
         setNotice('Favorites cleared.');
+        if (role === 'client') {
+          void Promise.all(idsToClear.map((productId) => toggleFavoriteWithApi(productId))).catch(
+            (error) => console.error('Unable to clear remote favorites:', error)
+          );
+        }
       },
       getProductById: (productId) => products.find((product) => product.id === productId),
     }),
-    [cartItemCount, cartItems, cartSubtotal, currentCustomer, favoriteIds, favoriteProducts, login, nextItemCode, notice, products, replaceProducts, role, totalStock]
+    [cartItemCount, cartItems, cartQuantities, cartSubtotal, categories, currentCustomer, favoriteIds, favoriteProducts, login, nextItemCode, notice, products, replaceProducts, role, totalStock]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

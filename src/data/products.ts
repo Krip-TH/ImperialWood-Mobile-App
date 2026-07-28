@@ -1,4 +1,4 @@
-import { Product, ProductStatus } from '@/context/AppContext';
+import type { Product, ProductStatus } from '@/context/AppContext';
 import localCatalog from '../../products.json';
 
 export const PRODUCTS_URL =

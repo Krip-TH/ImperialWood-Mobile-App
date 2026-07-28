@@ -10,7 +10,7 @@ import Header from '@/components/Header';
 import ProductImage from '@/components/ProductImage';
 import StatusBadge from '@/components/StatusBadge';
 import { Product, useAppContext } from '@/context/AppContext';
-import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
+import { getProducts } from '@/services/productService';
 
 export default function ProductDetailScreen() {
   const router = useRouter();
@@ -21,33 +21,25 @@ export default function ProductDetailScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    let active = true;
 
     async function loadProduct() {
       try {
-        const response = await fetch(PRODUCTS_URL, { signal: controller.signal });
-        if (!response.ok) {
-          throw new Error(`Product request failed with status ${response.status}.`);
-        }
-
-        const data: unknown = await response.json();
-        setProduct(parseProducts(data, true).find((catalogProduct) => catalogProduct.id === id));
+        const result = await getProducts();
+        if (!active) return;
+        setProduct(result.products.find((catalogProduct) => catalogProduct.id === id));
+        if (result.source !== 'api') setError('Showing fallback product data.');
       } catch (requestError) {
-        if (requestError instanceof Error && requestError.name === 'AbortError') {
-          return;
-        }
-
-        setError('Showing offline product data.');
-        setProduct(fallbackProducts.find((catalogProduct) => catalogProduct.id === id));
+        if (active) setError('Product data could not be loaded.');
       } finally {
-        if (!controller.signal.aborted) {
-          setIsLoading(false);
-        }
+        if (active) setIsLoading(false);
       }
     }
 
     void loadProduct();
-    return () => controller.abort();
+    return () => {
+      active = false;
+    };
   }, [id]);
 
   if (!role) {
