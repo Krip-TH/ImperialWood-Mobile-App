@@ -27,6 +27,7 @@ export type Product = {
   id: string;
   name: string;
   category: string;
+  categoryId?: string;
   price: string;
   image_url?: string;
   itemCode: string;
@@ -37,6 +38,8 @@ export type Product = {
   finish: string;
   description: string;
   status: ProductStatus;
+  productStatus?: string;
+  updatedAt?: string;
 };
 
 export type CartItem = {
@@ -66,10 +69,10 @@ type AppContextValue = {
   addProduct: (product: Product) => Promise<void>;
   replaceProducts: (products: Product[]) => void;
   toggleFavorite: (productId: string) => void;
-  addToCart: (product: Product) => void;
-  increaseCartItem: (productId: string) => void;
-  decreaseCartItem: (productId: string) => void;
-  removeFromCart: (productId: string) => void;
+  addToCart: (product: Product) => Promise<void>;
+  increaseCartItem: (productId: string) => Promise<void>;
+  decreaseCartItem: (productId: string) => Promise<void>;
+  removeFromCart: (productId: string) => Promise<void>;
   deleteProduct: (productId: string) => Promise<void>;
   deleteSampleProduct: () => void;
   clearFavorites: () => void;
@@ -318,33 +321,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
           });
         }
       },
-      addToCart: (product) => {
+      addToCart: async (product) => {
         if (product.status === 'Out of Stock') return;
+
+        if (role === 'client') {
+          await addCartItem(product);
+        }
+
         setCartQuantities((current) => ({
           ...current,
           [product.id]: (current[product.id] ?? 0) + 1,
         }));
         setNotice(`${product.name} added to cart.`);
-        if (role === 'client') {
-          void addCartItem(product.id).catch((error) =>
-            console.error('Unable to sync cart item:', error)
-          );
-        }
       },
-      increaseCartItem: (productId) => {
+      increaseCartItem: async (productId) => {
+        const product = products.find((item) => item.id === productId);
+        if (!product) throw new ApiError('Product not found.', 404);
+
         const nextQuantity = (cartQuantities[productId] ?? 0) + 1;
+
+        if (role === 'client') {
+          await updateCartItem(product, nextQuantity);
+        }
+
         setCartQuantities((current) => ({
           ...current,
-          [productId]: (current[productId] ?? 0) + 1,
+          [productId]: nextQuantity,
         }));
-        if (role === 'client') {
-          void updateCartItem(productId, nextQuantity).catch((error) =>
-            console.error('Unable to sync cart quantity:', error)
-          );
-        }
       },
-      decreaseCartItem: (productId) => {
+      decreaseCartItem: async (productId) => {
+        const product = products.find((item) => item.id === productId);
+        if (!product) throw new ApiError('Product not found.', 404);
+
         const nextQuantity = (cartQuantities[productId] ?? 0) - 1;
+
+        if (role === 'client') {
+          if (nextQuantity <= 0) {
+            await removeCartItem(productId);
+          } else {
+            await updateCartItem(product, nextQuantity);
+          }
+        }
+
         setCartQuantities((current) => {
           if (nextQuantity <= 0) {
             const { [productId]: _removed, ...remaining } = current;
@@ -352,23 +370,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           return { ...current, [productId]: nextQuantity };
         });
-        if (role === 'client') {
-          const sync = nextQuantity <= 0
-            ? removeCartItem(productId)
-            : updateCartItem(productId, nextQuantity);
-          void sync.catch((error) => console.error('Unable to sync cart quantity:', error));
-        }
       },
-      removeFromCart: (productId) => {
+      removeFromCart: async (productId) => {
+        if (role === 'client') {
+          await removeCartItem(productId);
+        }
+
         setCartQuantities((current) => {
           const { [productId]: _removed, ...remaining } = current;
           return remaining;
         });
-        if (role === 'client') {
-          void removeCartItem(productId).catch((error) =>
-            console.error('Unable to remove remote cart item:', error)
-          );
-        }
       },
       deleteProduct: async (productId) => {
         await deleteProductWithSupabase(productId);

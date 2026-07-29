@@ -1,18 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
 
 import { Product, useAppContext } from '@/context/AppContext';
 import ProductImage from './ProductImage';
 
-type Props = { product: Product; variant: 'featured' | 'grid'; width?: number };
+type Props = {
+  product: Product;
+  variant: 'featured' | 'grid';
+  width?: number;
+  showCatalogDetails?: boolean;
+};
 
-export default function HomeProductCard({ product, variant, width }: Props) {
+export default function HomeProductCard({
+  product,
+  variant,
+  width,
+  showCatalogDetails = false,
+}: Props) {
   const router = useRouter();
   const { addToCart, favoriteIds, toggleFavorite } = useAppContext();
+  const [isAdding, setIsAdding] = useState(false);
   const favorite = favoriteIds.includes(product.id);
   const openDetail = () => router.push({ pathname: '/product-detail', params: { id: product.id } });
-  const soldOut = product.status === 'Out of Stock';
+  const stock = Number.parseInt(product.stockQuantity, 10);
+  const soldOut =
+    product.status === 'Out of Stock' ||
+    (showCatalogDetails && !Number.isNaN(stock) && stock <= 0);
+  const handleAddToCart = async () => {
+    if (soldOut || isAdding) return;
+
+    setIsAdding(true);
+    try {
+      await addToCart(product);
+      Alert.alert('Added to cart', `${product.name} was added to your cart.`);
+    } catch (error) {
+      Alert.alert(
+        'Unable to add to cart',
+        error instanceof Error ? error.message : 'The cart could not be updated.'
+      );
+    } finally {
+      setIsAdding(false);
+    }
+  };
 
   return (
     <View style={[styles.card, variant === 'featured' ? styles.featured : styles.grid, width ? { width } : null]}>
@@ -25,6 +56,12 @@ export default function HomeProductCard({ product, variant, width }: Props) {
       <View style={styles.info}>
         <Text numberOfLines={2} style={styles.name}>{product.name}</Text>
         <Text numberOfLines={1} style={styles.meta}>{variant === 'featured' ? product.material : product.category}</Text>
+        {showCatalogDetails ? (
+          <>
+            <Text numberOfLines={1} style={styles.catalogDetail}>Material: {product.material}</Text>
+            <Text numberOfLines={1} style={styles.catalogDetail}>Stock: {product.stockQuantity}</Text>
+          </>
+        ) : null}
         <View style={styles.priceRow}>
           <Text numberOfLines={1} style={styles.price}>{product.price}</Text>
           {variant === 'featured' ? (
@@ -36,7 +73,11 @@ export default function HomeProductCard({ product, variant, width }: Props) {
         </View>
         {variant === 'grid' ? (
           <View style={styles.actions}>
-            <TouchableOpacity disabled={soldOut} style={[styles.cart, soldOut && styles.disabled]} onPress={() => addToCart(product)}>
+            <TouchableOpacity
+              disabled={soldOut || isAdding}
+              style={[styles.cart, (soldOut || isAdding) && styles.disabled]}
+              onPress={() => void handleAddToCart()}
+            >
               <Ionicons name="cart-outline" size={15} color="#FFFFFF" /><Text style={styles.cartText}>Add</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.detail} onPress={openDetail}><Text style={styles.detailText}>View</Text></TouchableOpacity>
@@ -57,6 +98,7 @@ const styles = StyleSheet.create({
   info: { padding: 12 },
   name: { minHeight: 37, color: '#3B2416', fontSize: 14, lineHeight: 18, fontWeight: '900' },
   meta: { color: '#8A7765', fontSize: 11, marginTop: 4 },
+  catalogDetail: { color: '#6B4423', fontSize: 11, fontWeight: '700', marginTop: 4 },
   priceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, marginTop: 9 },
   price: { flexShrink: 1, color: '#6B4423', fontSize: 13, fontWeight: '900' },
   arrow: { width: 31, height: 31, borderRadius: 12, backgroundColor: '#3B2416', alignItems: 'center', justifyContent: 'center' },

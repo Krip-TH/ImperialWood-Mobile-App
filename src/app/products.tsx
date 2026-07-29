@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
+import HomeProductCard from '@/components/HomeProductCard';
 import ProductCard from '@/components/ProductCard';
 import { Product, useAppContext } from '@/context/AppContext';
 import { getProducts } from '@/services/productService';
@@ -33,13 +34,17 @@ const productCategories = [
 
 export default function ProductsScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ category?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    category?: string | string[];
+    refresh?: string | string[];
+  }>();
   const { deleteProduct, favoriteIds, replaceProducts, role, toggleFavorite } = useAppContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [showOfflineWarning, setShowOfflineWarning] = useState(false);
   const requestedCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const refreshToken = Array.isArray(params.refresh) ? params.refresh[0] : params.refresh;
   const selectedCategory = requestedCategory?.trim() || 'All';
 
   useEffect(() => {
@@ -63,7 +68,7 @@ export default function ProductsScreen() {
     return () => {
       active = false;
     };
-  }, [replaceProducts]);
+  }, [refreshToken, replaceProducts]);
 
   const visibleProducts = useMemo(() => {
     const normalizedSearch = searchQuery.trim().toLowerCase();
@@ -151,6 +156,17 @@ export default function ProductsScreen() {
         {showOfflineWarning ? <Text style={styles.errorText}>Showing offline product data.</Text> : null}
         {!isLoading && visibleProducts.length === 0 ? (
           <Text style={styles.emptyText}>No products found in this category.</Text>
+        ) : role === 'client' ? (
+          <View style={styles.clientProductList}>
+            {visibleProducts.map((product) => (
+              <HomeProductCard
+                key={product.id}
+                product={product}
+                variant="grid"
+                showCatalogDetails
+              />
+            ))}
+          </View>
         ) : (
           visibleProducts.map((product) => (
             <ProductCard
@@ -180,6 +196,7 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: '#3B2416', borderColor: '#C89B3C' },
   filterChipText: { color: '#6B4423', fontSize: 12, fontWeight: '800' },
   filterChipTextActive: { color: '#FFFFFF' },
+  clientProductList: { width: '100%', gap: 12 },
   emptyText: { color: '#6B4423', textAlign: 'center', backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: '#E5D6C3', padding: 24, fontSize: 14, fontWeight: '800' },
   messageCard: { minHeight: 88, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: '#FFFFFF', borderRadius: 18, borderWidth: 1, borderColor: '#E5D6C3', padding: 16 },
   messageText: { color: '#3B2416', fontSize: 14, fontWeight: '700' },

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { Product, useAppContext } from '@/context/AppContext';
@@ -26,6 +26,12 @@ export default function ProductCard({
   const openDetail = () => {
     router.push({ pathname: '/product-detail', params: { id: product.id } });
   };
+  const openEdit = () => {
+    router.push({
+      pathname: '/edit-product',
+      params: { id: product.id },
+    } as Href);
+  };
 
   return (
     <TouchableOpacity style={styles.productCard} activeOpacity={0.9} onPress={openDetail}>
@@ -46,14 +52,24 @@ export default function ProductCard({
           </TouchableOpacity>
         </View>
         {isAdmin ? (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            activeOpacity={0.8}
-            onPress={onDelete ?? (() => void deleteProduct(product.id))}
-          >
-            <Ionicons name="trash-outline" size={15} color="#8A4B22" />
-            <Text style={styles.deleteButtonText}>Delete</Text>
-          </TouchableOpacity>
+          <View style={styles.adminActions}>
+            <TouchableOpacity
+              style={styles.editButton}
+              activeOpacity={0.8}
+              onPress={openEdit}
+            >
+              <Ionicons name="create-outline" size={15} color="#3B2416" />
+              <Text style={styles.editButtonText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              activeOpacity={0.8}
+              onPress={onDelete ?? (() => void deleteProduct(product.id))}
+            >
+              <Ionicons name="trash-outline" size={15} color="#8A4B22" />
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         ) : null}
       </View>
     </TouchableOpacity>
@@ -128,15 +144,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 'auto',
   },
+  adminActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  editButton: {
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#C89B3C',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  editButtonText: {
+    color: '#3B2416',
+    fontSize: 12,
+    fontWeight: '900',
+  },
   deleteButton: {
-    alignSelf: 'flex-start',
     borderRadius: 12,
     backgroundColor: '#F7F1E8',
     borderWidth: 1,
     borderColor: '#E5D6C3',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    marginTop: 10,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,

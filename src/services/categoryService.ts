@@ -1,19 +1,37 @@
 import { supabase } from '@/lib/supabase';
 import { toApiError } from '@/services/api';
 
-type Category = { category_id: string; name: string };
+export type CategoryOption = {
+  categoryId: string;
+  name: string;
+};
 
 export async function getCategories(): Promise<string[]> {
   const { data, error } = await supabase
     .from('IW_Categories')
-    .select('category_id, name')
-    .order('name');
+    .select('category_name')
+    .eq('category_status', 'active')
+    .order('category_name', { ascending: true });
 
   if (error) {
     throw toApiError(error, 'Categories could not be loaded.');
   }
 
-  return ((data ?? []) as Category[])
-    .map((category) => category.name)
-    .filter((name): name is string => typeof name === 'string' && name.length > 0);
+  return (data ?? []).map((row) => row.category_name);
+}
+
+export async function getCategoryOptions(): Promise<CategoryOption[]> {
+  const { data, error } = await supabase
+    .from('IW_Categories')
+    .select('category_id, category_name')
+    .order('category_name', { ascending: true });
+
+  if (error) {
+    throw toApiError(error, 'Categories could not be loaded.');
+  }
+
+  return (data ?? []).map((row) => ({
+    categoryId: String(row.category_id),
+    name: row.category_name,
+  }));
 }

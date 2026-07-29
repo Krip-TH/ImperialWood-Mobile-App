@@ -175,6 +175,62 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint AS c
+    WHERE c.conname = 'IW_Store_Photos_store_id_fkey'
+      AND c.contype = 'f'
+      AND c.conrelid = 'public."IW_Store_Photos"'::regclass
+      AND c.confrelid = 'public."IW_Stores"'::regclass
+      AND c.conkey = ARRAY[
+        (
+          SELECT a.attnum
+          FROM pg_attribute AS a
+          WHERE a.attrelid = 'public."IW_Store_Photos"'::regclass
+            AND a.attname = 'store_id'
+        )
+      ]::smallint[]
+      AND c.confkey = ARRAY[
+        (
+          SELECT a.attnum
+          FROM pg_attribute AS a
+          WHERE a.attrelid = 'public."IW_Stores"'::regclass
+            AND a.attname = 'store_id'
+        )
+      ]::smallint[]
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM pg_constraint AS c
+    WHERE c.conname = 'fk_iw_store_photos_store'
+      AND c.contype = 'f'
+      AND c.conrelid = 'public."IW_Store_Photos"'::regclass
+      AND c.confrelid = 'public."IW_Stores"'::regclass
+      AND c.conkey = ARRAY[
+        (
+          SELECT a.attnum
+          FROM pg_attribute AS a
+          WHERE a.attrelid = 'public."IW_Store_Photos"'::regclass
+            AND a.attname = 'store_id'
+        )
+      ]::smallint[]
+      AND c.confkey = ARRAY[
+        (
+          SELECT a.attnum
+          FROM pg_attribute AS a
+          WHERE a.attrelid = 'public."IW_Stores"'::regclass
+            AND a.attname = 'store_id'
+        )
+      ]::smallint[]
+  ) THEN
+    ALTER TABLE public."IW_Store_Photos"
+      DROP CONSTRAINT "fk_iw_store_photos_store";
+  END IF;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION public.iw_is_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -263,10 +319,16 @@ AS $$
 DECLARE
   v_auth_user_id uuid := auth.uid();
   v_user_id public."IW_Users"."user_id"%TYPE;
+  v_recipient_name public."IW_Orders"."recipient_name"%TYPE;
+  v_recipient_phone public."IW_Orders"."recipient_phone"%TYPE;
+  v_store_id public."IW_Stores"."store_id"%TYPE;
   v_cart_id public."IW_Carts"."cart_id"%TYPE;
   v_order_id public."IW_Orders"."order_id"%TYPE;
-  v_total numeric;
-  v_status text;
+  v_order_number public."IW_Orders"."order_number"%TYPE;
+  v_subtotal numeric;
+  v_shipping_fee numeric := 0;
+  v_total_amount numeric;
+  v_order_status public."IW_Orders"."order_status"%TYPE;
   v_created_at timestamptz;
   v_items jsonb;
 BEGIN
@@ -274,8 +336,14 @@ BEGIN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  SELECT u."user_id"
-  INTO v_user_id
+  SELECT
+    u."user_id",
+    COALESCE(NULLIF(u."full_name", ''), u."username"),
+    COALESCE(u."phone", '')
+  INTO
+    v_user_id,
+    v_recipient_name,
+    v_recipient_phone
   FROM public."IW_Users" AS u
   WHERE u."auth_user_id" = v_auth_user_id;
 
@@ -287,58 +355,113 @@ BEGIN
   INTO v_cart_id
   FROM public."IW_Carts" AS c
   WHERE c."user_id" = v_user_id
+    AND c."cart_status" = 'active'
+  ORDER BY c."cart_id" DESC
+  LIMIT 1
   FOR UPDATE;
 
   IF v_cart_id IS NULL THEN
     RAISE EXCEPTION 'Cart is empty';
   END IF;
 
-  SELECT SUM(ci."quantity" * p."price")
-  INTO v_total
+  SELECT SUM(ci."quantity"::numeric * ci."unit_price"::numeric)
+  INTO v_subtotal
   FROM public."IW_Cart_Items" AS ci
-  JOIN public."IW_Products" AS p
-    ON p."product_id" = ci."product_id"
   WHERE ci."cart_id" = v_cart_id;
 
-  IF v_total IS NULL THEN
+  IF v_subtotal IS NULL THEN
     RAISE EXCEPTION 'Cart is empty';
   END IF;
 
+  SELECT s."store_id"
+  INTO v_store_id
+  FROM public."IW_Stores" AS s
+  WHERE s."store_status" = 'active'
+  ORDER BY s."store_id"
+  LIMIT 1;
+
+  IF v_store_id IS NULL THEN
+    RAISE EXCEPTION 'No active store is available';
+  END IF;
+
+  v_created_at := clock_timestamp();
+  v_order_number := 'IW-' || (
+    EXTRACT(EPOCH FROM v_created_at) * 1000
+  )::bigint::text;
+  v_total_amount := v_subtotal + v_shipping_fee;
+
   INSERT INTO public."IW_Orders" (
+    "order_number",
     "user_id",
+    "store_id",
+    "order_date",
+    "subtotal",
+    "shipping_fee",
     "total_amount",
-    "status"
+    "payment_method",
+    "payment_status",
+    "order_status",
+    "recipient_name",
+    "recipient_phone",
+    "shipping_address",
+    "tracking_number",
+    "created_at",
+    "updated_at"
   )
   VALUES (
+    v_order_number,
     v_user_id,
-    v_total,
-    'Pending'
+    v_store_id,
+    v_created_at,
+    v_subtotal,
+    v_shipping_fee,
+    v_total_amount,
+    'cash_on_delivery',
+    'pending',
+    'confirmed',
+    v_recipient_name,
+    v_recipient_phone,
+    'Store pickup',
+    NULL,
+    v_created_at,
+    v_created_at
   )
-  RETURNING "order_id", "status"::text, "created_at"
-  INTO v_order_id, v_status, v_created_at;
+  RETURNING "order_id", "order_status"
+  INTO v_order_id, v_order_status;
 
-  INSERT INTO public."IW_Order_Items" (
-    "order_id",
-    "product_id",
-    "quantity",
-    "unit_price"
-  )
-  SELECT
-    v_order_id,
-    ci."product_id",
-    ci."quantity",
-    p."price"
-  FROM public."IW_Cart_Items" AS ci
-  JOIN public."IW_Products" AS p
-    ON p."product_id" = ci."product_id"
-  WHERE ci."cart_id" = v_cart_id;
+  BEGIN
+    INSERT INTO public."IW_Order_Items" (
+      "order_id",
+      "product_id",
+      "product_name",
+      "quantity",
+      "unit_price",
+      "line_total"
+    )
+    SELECT
+      v_order_id,
+      ci."product_id",
+      p."product_name",
+      ci."quantity",
+      ci."unit_price"::numeric,
+      ci."quantity"::numeric * ci."unit_price"::numeric
+    FROM public."IW_Cart_Items" AS ci
+    JOIN public."IW_Products" AS p
+      ON p."product_id" = ci."product_id"
+    WHERE ci."cart_id" = v_cart_id;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE EXCEPTION 'IW_Order_Items insert failed: %', SQLERRM;
+  END;
 
   SELECT COALESCE(
     jsonb_agg(
       jsonb_build_object(
         'product_id', oi."product_id",
+        'product_name', oi."product_name",
         'quantity', oi."quantity",
-        'unit_price', oi."unit_price"
+        'unit_price', oi."unit_price",
+        'line_total', oi."line_total"
       )
     ),
     '[]'::jsonb
@@ -350,11 +473,16 @@ BEGIN
   DELETE FROM public."IW_Cart_Items" AS ci
   WHERE ci."cart_id" = v_cart_id;
 
+  UPDATE public."IW_Carts" AS c
+  SET "cart_status" = 'ordered'
+  WHERE c."cart_id" = v_cart_id;
+
   RETURN jsonb_build_object(
     'id', v_order_id,
+    'order_number', v_order_number,
     'user_id', v_user_id,
-    'total_amount', v_total,
-    'status', v_status,
+    'total_amount', v_total_amount,
+    'order_status', v_order_status,
     'created_at', v_created_at,
     'items', v_items
   );
@@ -557,6 +685,14 @@ CREATE POLICY "iw_orders_read"
         AND u."auth_user_id" = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "iw_orders_admin_update" ON public."IW_Orders";
+CREATE POLICY "iw_orders_admin_update"
+  ON public."IW_Orders"
+  FOR UPDATE
+  TO authenticated
+  USING (public.iw_is_admin())
+  WITH CHECK (public.iw_is_admin());
 
 DROP POLICY IF EXISTS "iw_order_items_read" ON public."IW_Order_Items";
 CREATE POLICY "iw_order_items_read"

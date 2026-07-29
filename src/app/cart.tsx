@@ -22,6 +22,27 @@ export default function CartScreen() {
   } = useAppContext();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
+  const [cartError, setCartError] = useState('');
+  const [updatingProductId, setUpdatingProductId] = useState<string | null>(null);
+
+  const runCartAction = async (
+    productId: string,
+    action: () => Promise<void>
+  ) => {
+    if (updatingProductId) return;
+
+    setUpdatingProductId(productId);
+    setCartError('');
+    try {
+      await action();
+    } catch (error) {
+      setCartError(
+        error instanceof Error ? error.message : 'The cart could not be updated.'
+      );
+    } finally {
+      setUpdatingProductId(null);
+    }
+  };
 
   const submitOrder = async () => {
     if (isCheckingOut) return;
@@ -66,16 +87,17 @@ export default function CartScreen() {
                     <Text style={styles.price}>{product.price}</Text>
                     <View style={styles.itemBottom}>
                       <View style={styles.quantity}>
-                        <TouchableOpacity style={styles.quantityButton} onPress={() => decreaseCartItem(product.id)}><Ionicons name="remove" size={16} color="#3B2416" /></TouchableOpacity>
+                        <TouchableOpacity disabled={updatingProductId !== null} style={[styles.quantityButton, updatingProductId !== null && styles.cartActionDisabled]} onPress={() => void runCartAction(product.id, () => decreaseCartItem(product.id))}><Ionicons name="remove" size={16} color="#3B2416" /></TouchableOpacity>
                         <Text style={styles.quantityText}>{quantity}</Text>
-                        <TouchableOpacity style={styles.quantityButton} onPress={() => increaseCartItem(product.id)}><Ionicons name="add" size={16} color="#3B2416" /></TouchableOpacity>
+                        <TouchableOpacity disabled={updatingProductId !== null} style={[styles.quantityButton, updatingProductId !== null && styles.cartActionDisabled]} onPress={() => void runCartAction(product.id, () => increaseCartItem(product.id))}><Ionicons name="add" size={16} color="#3B2416" /></TouchableOpacity>
                       </View>
-                      <TouchableOpacity style={styles.remove} onPress={() => removeFromCart(product.id)}><Ionicons name="trash-outline" size={17} color="#9A5B3B" /></TouchableOpacity>
+                      <TouchableOpacity disabled={updatingProductId !== null} style={[styles.remove, updatingProductId !== null && styles.cartActionDisabled]} onPress={() => void runCartAction(product.id, () => removeFromCart(product.id))}><Ionicons name="trash-outline" size={17} color="#9A5B3B" /></TouchableOpacity>
                     </View>
                   </View>
                 </View>
               ))}
             </View>
+            {cartError ? <Text style={styles.checkoutError}>{cartError}</Text> : null}
             <View style={styles.summary}>
               <View><Text style={styles.summaryLabel}>Subtotal</Text><Text style={styles.summaryNote}>Taxes and delivery are not included.</Text></View>
               <Text style={styles.subtotal}>THB {cartSubtotal.toLocaleString()}</Text>
@@ -115,6 +137,7 @@ const styles = StyleSheet.create({
   itemBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' },
   quantity: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 3, borderRadius: 13, backgroundColor: '#F7F1E8' },
   quantityButton: { width: 28, height: 28, borderRadius: 10, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  cartActionDisabled: { opacity: 0.5 },
   quantityText: { color: '#3B2416', minWidth: 14, textAlign: 'center', fontSize: 12, fontWeight: '900' },
   remove: { width: 34, height: 34, borderRadius: 12, backgroundColor: '#FFF4E8', alignItems: 'center', justifyContent: 'center' },
   summary: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 18, padding: 19, borderRadius: 22, backgroundColor: '#3B2416' },

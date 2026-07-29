@@ -36,22 +36,34 @@ const STORAGE_KEYS: Record<string, string> = {
 };
 const MAX_STORE_JSON_BYTES = 1_500_000;
 
+const storeImageMap: Record<string, ImageSourcePropType> = {
+  'assets/stores/phuket-1.jpg': require('../../assets/stores/phuket-1.jpg'),
+  'assets/stores/phuket-2.jpg': require('../../assets/stores/phuket-2.jpg'),
+  'assets/stores/phuket-3.jpg': require('../../assets/stores/phuket-3.jpg'),
+  'assets/stores/melbourne-1.jpg': require('../../assets/stores/melbourne-1.jpg'),
+  'assets/stores/melbourne-2.jpg': require('../../assets/stores/melbourne-2.jpg'),
+  'assets/stores/melbourne-3.jpg': require('../../assets/stores/melbourne-3.jpg'),
+  'assets/stores/new-york-1.jpg': require('../../assets/stores/new-york-1.jpg'),
+  'assets/stores/new-york-2.jpg': require('../../assets/stores/new-york-2.jpg'),
+  'assets/stores/new-york-3.jpg': require('../../assets/stores/new-york-3.jpg'),
+};
+
 const phuketDefaultImages: ImageSourcePropType[] = [
-  require('../../assets/stores/phuket-1.jpg'),
-  require('../../assets/stores/phuket-2.jpg'),
-  require('../../assets/stores/phuket-3.jpg'),
+  storeImageMap['assets/stores/phuket-1.jpg'],
+  storeImageMap['assets/stores/phuket-2.jpg'],
+  storeImageMap['assets/stores/phuket-3.jpg'],
 ];
 
 const melbourneDefaultImages: ImageSourcePropType[] = [
-  require('../../assets/stores/melbourne-1.jpg'),
-  require('../../assets/stores/melbourne-2.jpg'),
-  require('../../assets/stores/melbourne-3.jpg'),
+  storeImageMap['assets/stores/melbourne-1.jpg'],
+  storeImageMap['assets/stores/melbourne-2.jpg'],
+  storeImageMap['assets/stores/melbourne-3.jpg'],
 ];
 
 const newYorkDefaultImages: ImageSourcePropType[] = [
-  require('../../assets/stores/new-york-1.jpg'),
-  require('../../assets/stores/new-york-2.jpg'),
-  require('../../assets/stores/new-york-3.jpg'),
+  storeImageMap['assets/stores/new-york-1.jpg'],
+  storeImageMap['assets/stores/new-york-2.jpg'],
+  storeImageMap['assets/stores/new-york-3.jpg'],
 ];
 
 const defaultImages: Record<string, ImageSourcePropType[]> = {
@@ -59,6 +71,11 @@ const defaultImages: Record<string, ImageSourcePropType[]> = {
   melbourne: melbourneDefaultImages,
   'new-york': newYorkDefaultImages,
 };
+const fallbackStoreImages = [
+  phuketDefaultImages,
+  melbourneDefaultImages,
+  newYorkDefaultImages,
+];
 
 const initialStores: Store[] = [
   {
@@ -119,6 +136,7 @@ export default function StoresScreen() {
         const remoteStores = await getStores();
         if (active && remoteStores.length > 0) {
           setStores(remoteStores);
+          setIsLoading(false);
           return;
         }
         throw new Error('The API returned no stores.');
@@ -163,7 +181,7 @@ export default function StoresScreen() {
 
   if (!role) return <Redirect href="/" />;
 
-  const cardWidth = width >= 900 ? '31.8%' : '100%';
+  const cardWidth = width >= 900 ? '31%' : '100%';
 
   const commitStore = (updatedStore: Store) => {
     const previousStore = stores.find((store) => store.id === updatedStore.id);
@@ -224,8 +242,8 @@ export default function StoresScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#F7F1E8" />
       <Header title="Stores" />
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.pageHeading}>
-          <View>
+        <View style={[styles.pageHeading, width < 600 && styles.pageHeadingMobile]}>
+          <View style={styles.pageHeadingCopy}>
             <Text style={styles.eyebrow}>GLOBAL SHOWROOMS</Text>
             <Text style={styles.pageTitle}>ImperialWood Stores</Text>
             <Text style={styles.pageSubtitle}>Three destinations for timeless wooden craftsmanship.</Text>
@@ -234,10 +252,13 @@ export default function StoresScreen() {
         </View>
 
         <View style={styles.grid}>
-          {!isLoading && stores.map((store) => {
+          {!isLoading && stores.map((store, storeIndex) => {
             const isEditing = role === 'admin' && editingId === store.id && draft;
             const isOpen = isStoreOpen(store, statusClock);
-            const storePhotos = defaultImages[store.id] ?? [];
+            const databasePhotos = store.images.map(resolveStoreImage);
+            const storePhotos = databasePhotos.length > 0
+              ? databasePhotos
+              : (defaultImages[store.id] ?? fallbackStoreImages[storeIndex % fallbackStoreImages.length]);
             return (
               <View key={store.id} style={[styles.card, { width: cardWidth }]}>
                 <View style={styles.photoRow}>
@@ -326,7 +347,7 @@ export default function StoresScreen() {
                           <View style={styles.previewRow}>
                             {store.images.map((photoUri, index) => (
                               <View key={photoUri} style={styles.previewSlot}>
-                                <Image source={{ uri: photoUri }} style={styles.photo} resizeMode="cover" />
+                                <Image source={resolveStoreImage(photoUri)} style={styles.photo} resizeMode="cover" />
                                 <TouchableOpacity accessibilityLabel="Remove preview photo" style={styles.removeButton} onPress={() => void removeStorePhoto(store, index)}>
                                   <Ionicons name="close" size={12} color="#FFFFFF" />
                                   <Text style={styles.removeButtonText}>Remove Photo</Text>
@@ -373,6 +394,10 @@ async function compressPhoto(asset: ImagePicker.ImagePickerAsset): Promise<strin
     return `data:image/jpeg;base64,${result.base64}`;
   }
   return result.uri;
+}
+
+function resolveStoreImage(photoUrl: string): ImageSourcePropType {
+  return storeImageMap[photoUrl] ?? { uri: photoUrl };
 }
 
 let lastPhotoTimestamp = 0;
@@ -484,14 +509,16 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F7F1E8' },
   scrollView: { flex: 1 },
   container: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 150, maxWidth: 1480, width: '100%', alignSelf: 'center' },
-  pageHeading: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 22, gap: 16 },
+  pageHeading: { width: '100%', flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 22, gap: 16 },
+  pageHeadingMobile: { flexDirection: 'column', alignItems: 'stretch' },
+  pageHeadingCopy: { flex: 1, minWidth: 0 },
   eyebrow: { color: '#B07C2E', fontSize: 11, fontWeight: '900', letterSpacing: 2.2, marginBottom: 5 },
   pageTitle: { color: '#3B2416', fontSize: 28, lineHeight: 34, fontWeight: '900' },
   pageSubtitle: { color: '#80634A', fontSize: 14, lineHeight: 20, marginTop: 5 },
   storeCount: { backgroundColor: '#3B2416', borderRadius: 18, paddingVertical: 9, paddingHorizontal: 16, alignItems: 'center' },
   storeCountNumber: { color: '#D8AC52', fontSize: 20, fontWeight: '900' }, storeCountLabel: { color: '#F7F1E8', fontSize: 9, fontWeight: '900', letterSpacing: 1.2 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#E5D6C3', shadowColor: '#3B2416', shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.09, shadowRadius: 18, elevation: 4 },
+  grid: { width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' },
+  card: { maxWidth: '100%', backgroundColor: '#FFFFFF', borderRadius: 24, overflow: 'hidden', borderWidth: 1, borderColor: '#E5D6C3', shadowColor: '#3B2416', shadowOffset: { width: 0, height: 9 }, shadowOpacity: 0.09, shadowRadius: 18, elevation: 4 },
   photoRow: { flexDirection: 'row', height: 145, gap: 3, backgroundColor: '#EADBC7' },
   photoSlot: { flex: 1, flexBasis: 0, position: 'relative', backgroundColor: '#EEE2D2' }, photo: { width: '100%', height: '100%' },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 }, placeholderText: { color: '#A68862', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
