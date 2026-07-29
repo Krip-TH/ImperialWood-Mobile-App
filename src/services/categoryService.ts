@@ -1,5 +1,10 @@
-import { supabase } from '@/lib/supabase';
-import { toApiError } from '@/services/api';
+import { apiData } from '@/services/api';
+
+type ApiCategory = {
+  category_id: string | number;
+  category_name: string;
+  category_status?: string | null;
+};
 
 export type CategoryOption = {
   categoryId: string;
@@ -7,31 +12,18 @@ export type CategoryOption = {
 };
 
 export async function getCategories(): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('IW_Categories')
-    .select('category_name')
-    .eq('category_status', 'active')
-    .order('category_name', { ascending: true });
+  const categories = await apiData<ApiCategory[]>('/categories');
 
-  if (error) {
-    throw toApiError(error, 'Categories could not be loaded.');
-  }
-
-  return (data ?? []).map((row) => row.category_name);
+  return categories
+    .filter((category) => category.category_status !== 'inactive')
+    .map((category) => category.category_name);
 }
 
 export async function getCategoryOptions(): Promise<CategoryOption[]> {
-  const { data, error } = await supabase
-    .from('IW_Categories')
-    .select('category_id, category_name')
-    .order('category_name', { ascending: true });
+  const categories = await apiData<ApiCategory[]>('/categories');
 
-  if (error) {
-    throw toApiError(error, 'Categories could not be loaded.');
-  }
-
-  return (data ?? []).map((row) => ({
-    categoryId: String(row.category_id),
-    name: row.category_name,
+  return categories.map((category) => ({
+    categoryId: String(category.category_id),
+    name: category.category_name,
   }));
 }

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { ApiError, assertData, toApiError } from '@/services/api';
+import { ApiError, setAuthToken, toApiError } from '@/services/api';
 
 export type AuthRole = 'client' | 'admin';
 
@@ -48,97 +48,124 @@ export async function login(
   username: string,
   password: string
 ): Promise<AuthUser> {
-  const { data: loginRows, error: profileError } = await supabase.rpc('iw_resolve_login', {
-    p_role: role,
-    p_username: username,
-  });
+  const { data: loginRows, error: resolveError } = await supabase.rpc(
+    'iw_resolve_login',
+    {
+      p_role: role,
+      p_username: username,
+    }
+  );
 
-  if (profileError) {
-    throw toApiError(profileError, 'Unable to find this account.');
+  if (resolveError) {
+    throw toApiError(resolveError, 'Unable to find this account.');
   }
+
   const loginProfile = Array.isArray(loginRows) ? loginRows[0] : loginRows;
   const email =
-    loginProfile && typeof loginProfile === 'object' && 'email' in loginProfile
+    loginProfile &&
+    typeof loginProfile === 'object' &&
+    'email' in loginProfile
       ? String(loginProfile.email ?? '')
       : '';
+
   if (!email) {
     throw new ApiError('Invalid username or password.', 401);
   }
 
-  const { error: authError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-  if (authError) {
-    throw toApiError(authError, 'Invalid username or password.', 401);
+  const { data: authData, error: authError } =
+    await supabase.auth.signInWithPassword({ email, password });
+
+  if (authError || !authData.session) {
+    throw new ApiError(
+      authError?.message || 'Invalid username or password.',
+      authError?.status ?? 401,
+      authError
+    );
   }
 
-  const { data: profile, error: authenticatedProfileError } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('IW_Users')
     .select('user_id, full_name, username, email, phone, role, created_at')
-    .eq('username', username)
+    .eq('auth_user_id', authData.user.id)
     .eq('role', role)
     .single<UserRow>();
-  if (authenticatedProfileError) {
+
+  if (profileError) {
     await supabase.auth.signOut();
-    throw toApiError(authenticatedProfileError, 'The user profile could not be loaded.');
+    throw toApiError(profileError, 'The user profile could not be loaded.');
   }
 
+  await setAuthToken(authData.session.access_token);
   return normalizeUser(profile);
 }
 
 export async function register(input: RegisterInput): Promise<AuthUser> {
   const email = input.email.trim().toLowerCase();
+  const profileInput = {
+    full_name: input.fullName.trim(),
+    username: input.username.trim(),
+    phone: input.phone.trim(),
+    role: 'client' as const,
+  };
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password: input.password,
-    options: {
-      data: {
-        full_name: input.fullName.trim(),
-        username: input.username.trim(),
-        phone: input.phone.trim(),
-        role: 'client',
-      },
-    },
+    options: { data: profileInput },
   });
+
   if (authError) {
-    throw toApiError(authError, 'Unable to create the account.', authError.status);
+    throw new ApiError(
+      authError.message || 'Unable to create the account.',
+      authError.status,
+      authError
+    );
   }
 
-  const authUser = assertData(authData.user, null, 'Supabase did not return a new user.');
-  const { data: profile, error: profileError } = await supabase
-    .from('IW_Users')
-    .upsert({
-      auth_user_id: authUser.id,
-      full_name: input.fullName.trim(),
-      username: input.username.trim(),
-      email,
-      phone: input.phone.trim(),
-      role: 'client',
-    }, { onConflict: 'auth_user_id' })
-    .select('user_id, full_name, username, email, phone, role, created_at')
-    .single<UserRow>();
+  if (!authData.user) {
+    throw new ApiError('Supabase did not return a new user.', 500);
+  }
 
-  if (profileError && authData.session) {
-    throw toApiError(profileError, 'The account profile could not be created.');
+  let profile: UserRow | null = null;
+  if (authData.session) {
+    const { data, error } = await supabase
+      .from('IW_Users')
+      .upsert(
+        {
+          auth_user_id: authData.user.id,
+          ...profileInput,
+          email,
+        },
+        { onConflict: 'auth_user_id' }
+      )
+      .select('user_id, full_name, username, email, phone, role, created_at')
+      .single<UserRow>();
+
+    if (error) {
+      throw toApiError(error, 'The account profile could not be created.');
+    }
+    profile = data;
   }
 
   await supabase.auth.signOut();
+  await setAuthToken(null);
+
   return profile
     ? normalizeUser(profile)
     : {
-        id: authUser.id,
-        fullName: input.fullName.trim(),
-        username: input.username.trim(),
+        id: authData.user.id,
+        fullName: profileInput.full_name,
+        username: profileInput.username,
         email,
-        phone: input.phone.trim(),
+        phone: profileInput.phone,
         role: 'client',
-        createdAt: authUser.created_at,
+        createdAt: authData.user.created_at,
       };
 }
 
 export async function logout(): Promise<void> {
   const { error } = await supabase.auth.signOut();
+  await setAuthToken(null);
+
   if (error) {
     throw toApiError(error, 'Unable to sign out.');
   }

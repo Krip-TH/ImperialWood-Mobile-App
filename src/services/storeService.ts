@@ -1,5 +1,4 @@
-import { supabase } from '@/lib/supabase';
-import { toApiError } from '@/services/api';
+import { apiData } from '@/services/api';
 
 export type StoreRecord = {
   id: string;
@@ -22,9 +21,8 @@ export type StoreRecord = {
 
 type ApiStore = Record<string, unknown>;
 type StorePhotoRow = {
-  photo_id: string | number;
-  photo_url: string | null;
-  sort_order: number | string | null;
+  photo_url?: string | null;
+  sort_order?: number | string | null;
 };
 type StoreStats = {
   items: number;
@@ -70,43 +68,29 @@ const value = (store: ApiStore, camel: string, snake: string): string =>
   String(store[camel] ?? store[snake] ?? '');
 
 function storeImages(store: ApiStore): string[] {
-  const photos = store.IW_Store_Photos;
-  if (!Array.isArray(photos)) return [];
+  const source = Array.isArray(store.images)
+    ? store.images
+    : store.IW_Store_Photos;
+  if (!Array.isArray(source)) return [];
 
-  return photos
-    .filter((photo): photo is StorePhotoRow => Boolean(photo) && typeof photo === 'object')
-    .sort((left, right) => Number(left.sort_order ?? 0) - Number(right.sort_order ?? 0))
-    .map((photo) => photo.photo_url ?? '')
-    .filter((photoUrl) => photoUrl.length > 0);
+  return source
+    .map((photo) => {
+      if (typeof photo === 'string') return photo;
+      if (!photo || typeof photo !== 'object') return '';
+      return (photo as StorePhotoRow).photo_url ?? '';
+    })
+    .filter((photoUrl): photoUrl is string => photoUrl.length > 0);
 }
 
 export async function getStores(): Promise<StoreRecord[]> {
-  const { data, error } = await supabase
-    .from('IW_Stores')
-    .select(`
-      *,
-      IW_Store_Photos!IW_Store_Photos_store_id_fkey (
-        photo_id,
-        photo_url,
-        sort_order
-      )
-    `)
-    .eq('store_status', 'active')
-    .order('city');
+  const stores = await apiData<ApiStore[]>('/stores');
 
-  console.log('Raw Supabase stores:', data);
-
-  if (error) {
-    console.error('Supabase stores error:', error);
-    throw toApiError(error, 'Stores could not be loaded.');
-  }
-
-  const mappedStores = ((data ?? []) as ApiStore[]).map((store) => {
+  return stores.map((store) => {
     const city = String(store.city ?? '');
     const fallback = STORE_STATS[city] ?? DEFAULT_STATS;
 
     return {
-      id: String(store.store_id),
+      id: String(store.store_id ?? store.id),
       city,
       country: String(store.country ?? ''),
       employees: String(store.employees ?? ''),
@@ -114,10 +98,14 @@ export async function getStores(): Promise<StoreRecord[]> {
       orders: String(store.orders ?? fallback.orders),
       refunds: String(store.refunds ?? fallback.refunds),
       mostSoldProduct:
-        value(store, 'mostSoldProduct', 'most_sold_product') || fallback.mostSoldProduct,
+        value(store, 'mostSoldProduct', 'most_sold_product') ||
+        fallback.mostSoldProduct,
       popularCategory:
-        value(store, 'popularCategory', 'popular_category') || fallback.popularCategory,
-      satisfaction: String(store.customer_satisfaction ?? ''),
+        value(store, 'popularCategory', 'popular_category') ||
+        fallback.popularCategory,
+      satisfaction: String(
+        store.customer_satisfaction ?? store.satisfaction ?? ''
+      ),
       businessDays: value(store, 'businessDays', 'business_days'),
       openingTime: value(store, 'openingTime', 'opening_time'),
       closingTime: value(store, 'closingTime', 'closing_time'),
@@ -126,7 +114,4 @@ export async function getStores(): Promise<StoreRecord[]> {
       images: storeImages(store),
     };
   });
-
-  console.log('Mapped stores:', mappedStores);
-  return mappedStores;
 }

@@ -1,17 +1,12 @@
 import type { Product, ProductStatus } from '@/context/AppContext';
-import { supabase } from '@/lib/supabase';
-import { toApiError } from '@/services/api';
+import { apiData } from '@/services/api';
 
-type CategoryRelation = {
-  category_id: string | number;
-  category_name: string | null;
-};
-
-type SupabaseProduct = {
+type ApiProduct = {
   product_id: string | number;
   item_code: string;
   product_name: string;
   category_id: string | number;
+  category_name?: string | null;
   material: string | null;
   size: string | null;
   finish: string | null;
@@ -25,7 +20,16 @@ type SupabaseProduct = {
   product_status: string | null;
   created_at: string | null;
   updated_at: string | null;
-  IW_Categories: CategoryRelation | CategoryRelation[] | null;
+  IW_Categories?:
+    | {
+        category_id: string | number;
+        category_name: string | null;
+      }
+    | {
+        category_id: string | number;
+        category_name: string | null;
+      }[]
+    | null;
 };
 
 function normalizeStatus(value: unknown, stock: number): ProductStatus {
@@ -42,24 +46,26 @@ function normalizeStatus(value: unknown, stock: number): ProductStatus {
   return 'Available';
 }
 
-function getCategoryName(
-  relation: SupabaseProduct['IW_Categories']
-): string {
-  if (Array.isArray(relation)) {
-    return relation[0]?.category_name ?? '';
+function getCategoryName(row: ApiProduct): string {
+  if (row.category_name) {
+    return row.category_name;
   }
 
-  return relation?.category_name ?? '';
+  if (Array.isArray(row.IW_Categories)) {
+    return row.IW_Categories[0]?.category_name ?? '';
+  }
+
+  return row.IW_Categories?.category_name ?? '';
 }
 
-function normalizeProduct(row: SupabaseProduct): Product {
+function normalizeProduct(row: ApiProduct): Product {
   const stock = Number(row.total_stock ?? 0);
   const price = Number(row.price ?? 0);
 
   return {
     id: String(row.product_id),
     name: row.product_name,
-    category: getCategoryName(row.IW_Categories),
+    category: getCategoryName(row),
     categoryId: String(row.category_id),
     price: `THB ${price.toLocaleString('en-US')}`,
     image_url: row.image_url ?? undefined,
@@ -76,186 +82,14 @@ function normalizeProduct(row: SupabaseProduct): Product {
   };
 }
 
-export type ProductSource = 'supabase';
+function createPayload(product: Product) {
+  const numericPrice = Number(
+    product.price.replace(/[^0-9.]/g, '')
+  );
 
-export type ProductResult = {
-  products: Product[];
-  source: ProductSource;
-};
+  const numericStock =
+    Number.parseInt(product.stockQuantity, 10) || 0;
 
-export async function getProducts(): Promise<ProductResult> {
-  const { data, error } = await supabase
-    .from('IW_Products')
-    .select(`
-      product_id,
-      item_code,
-      product_name,
-      category_id,
-      material,
-      size,
-      finish,
-      price,
-      total_stock,
-      badge_status,
-      location_count,
-      location_text,
-      description,
-      image_url,
-      product_status,
-      created_at,
-      updated_at,
-      IW_Categories!IW_Products_category_id_fkey (
-        category_id,
-        category_name
-      )
-    `)
-    .eq('product_status', 'active')
-    .order('item_code', { ascending: true });
-
-  if (error) {
-    console.error('Supabase products error:', error);
-    throw toApiError(error, 'Products could not be loaded.');
-  }
-
-  const rows = (data ?? []) as unknown as SupabaseProduct[];
-
-  return {
-    products: rows.map(normalizeProduct),
-    source: 'supabase',
-  };
-}
-
-export async function createProduct(product: Product): Promise<Product> {
-  const { data: category, error: categoryError } = await supabase
-    .from('IW_Categories')
-    .select('category_id')
-    .eq('category_name', product.category)
-    .single<{ category_id: string | number }>();
-
-  if (categoryError) {
-    throw toApiError(
-      categoryError,
-      'The selected category could not be found.'
-    );
-  }
-
-  const numericPrice = Number(product.price.replace(/[^0-9.]/g, ''));
-  const numericStock = Number.parseInt(product.stockQuantity, 10) || 0;
-
-  const { data, error } = await supabase
-    .from('IW_Products')
-    .insert({
-      product_id: product.id,
-      item_code: product.itemCode,
-      product_name: product.name,
-      category_id: category.category_id,
-      price: numericPrice,
-      total_stock: numericStock,
-      badge_status: product.status,
-      location_text: product.storeAvailability,
-      material: product.material,
-      size: product.size,
-      finish: product.finish,
-      description: product.description,
-      image_url: product.image_url ?? null,
-      product_status: 'active',
-    })
-    .select(`
-      product_id,
-      item_code,
-      product_name,
-      category_id,
-      material,
-      size,
-      finish,
-      price,
-      total_stock,
-      badge_status,
-      location_count,
-      location_text,
-      description,
-      image_url,
-      product_status,
-      created_at,
-      updated_at,
-      IW_Categories!IW_Products_category_id_fkey (
-        category_id,
-        category_name
-      )
-    `)
-    .single();
-
-  if (error) {
-    console.error('Supabase create product error:', error);
-    throw toApiError(error, 'The product could not be created.');
-  }
-
-  return normalizeProduct(data as unknown as SupabaseProduct);
-}
-
-export async function getProductById(productId: string): Promise<Product> {
-  const { data, error } = await supabase
-    .from('IW_Products')
-    .select(`
-      product_id,
-      item_code,
-      product_name,
-      category_id,
-      material,
-      size,
-      finish,
-      price,
-      total_stock,
-      badge_status,
-      location_count,
-      location_text,
-      description,
-      image_url,
-      product_status,
-      created_at,
-      updated_at,
-      IW_Categories!IW_Products_category_id_fkey (
-        category_id,
-        category_name
-      )
-    `)
-    .eq('product_id', productId)
-    .single();
-
-  if (error) {
-    console.error('Supabase product error:', error);
-    throw toApiError(error, 'The product could not be loaded.');
-  }
-
-  return normalizeProduct(data as unknown as SupabaseProduct);
-}
-
-export async function updateProduct(
-  productId: string,
-  product: Product
-): Promise<Product> {
-  let categoryId = product.categoryId;
-
-  if (!categoryId) {
-    const { data: category, error: categoryError } = await supabase
-      .from('IW_Categories')
-      .select('category_id')
-      .eq('category_name', product.category)
-      .single<{ category_id: string | number }>();
-
-    if (categoryError) {
-      console.error('Supabase update product error:', categoryError);
-      throw toApiError(
-        categoryError,
-        'The selected category could not be found.'
-      );
-    }
-
-    categoryId = String(category.category_id);
-  }
-
-  const numericPrice = Number(product.price.replace(/[^0-9.]/g, ''));
-  const numericStock = Number(product.stockQuantity);
   const badgeStatus: ProductStatus =
     numericStock <= 0
       ? 'Out of Stock'
@@ -263,65 +97,80 @@ export async function updateProduct(
         ? 'Low Stock'
         : 'Available';
 
-  const { data, error } = await supabase
-    .from('IW_Products')
-    .update({
-      product_name: product.name,
-      item_code: product.itemCode,
-      category_id: categoryId,
-      price: numericPrice,
-      total_stock: numericStock,
-      badge_status: badgeStatus,
-      location_text: product.storeAvailability,
-      material: product.material,
-      size: product.size,
-      finish: product.finish,
-      description: product.description,
-      image_url: product.image_url ?? null,
-      product_status: product.productStatus ?? 'active',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('product_id', productId)
-    .select(`
-      product_id,
-      item_code,
-      product_name,
-      category_id,
-      material,
-      size,
-      finish,
-      price,
-      total_stock,
-      badge_status,
-      location_count,
-      location_text,
-      description,
-      image_url,
-      product_status,
-      created_at,
-      updated_at,
-      IW_Categories!IW_Products_category_id_fkey (
-        category_id,
-        category_name
-      )
-    `)
-    .single();
-
-  if (error) {
-    console.error('Supabase update product error:', error);
-    throw toApiError(error, 'The product could not be updated.');
-  }
-
-  return normalizeProduct(data as unknown as SupabaseProduct);
+  return {
+    product_id: product.id || undefined,
+    item_code: product.itemCode,
+    product_name: product.name,
+    category_id: Number(product.categoryId),
+    price: numericPrice,
+    total_stock: numericStock,
+    badge_status: badgeStatus,
+    location_text: product.storeAvailability,
+    material: product.material,
+    size: product.size,
+    finish: product.finish,
+    description: product.description,
+    image_url: product.image_url ?? null,
+    product_status: product.productStatus ?? 'active',
+  };
 }
 
-export async function deleteProduct(productId: string): Promise<void> {
-  const { error } = await supabase
-    .from('IW_Products')
-    .delete()
-    .eq('product_id', productId);
+export type ProductSource = 'api';
 
-  if (error) {
-    throw toApiError(error, 'The product could not be deleted.');
-  }
+export type ProductResult = {
+  products: Product[];
+  source: ProductSource;
+};
+
+export async function getProducts(): Promise<ProductResult> {
+  const products = await apiData<ApiProduct[]>('/products');
+
+  return {
+    products: products.map(normalizeProduct),
+    source: 'api',
+  };
+}
+
+export async function getProductById(
+  productId: string
+): Promise<Product> {
+  const product = await apiData<ApiProduct>(
+    `/products/${productId}`
+  );
+
+  return normalizeProduct(product);
+}
+
+export async function createProduct(
+  product: Product
+): Promise<Product> {
+  const createdProduct = await apiData<ApiProduct>('/products', {
+    method: 'POST',
+    body: JSON.stringify(createPayload(product)),
+  });
+
+  return normalizeProduct(createdProduct);
+}
+
+export async function updateProduct(
+  productId: string,
+  product: Product
+): Promise<Product> {
+  const updatedProduct = await apiData<ApiProduct>(
+    `/products/${productId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(createPayload(product)),
+    }
+  );
+
+  return normalizeProduct(updatedProduct);
+}
+
+export async function deleteProduct(
+  productId: string
+): Promise<void> {
+  await apiData(`/products/${productId}`, {
+    method: 'DELETE',
+  });
 }
