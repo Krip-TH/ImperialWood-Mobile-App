@@ -51,7 +51,7 @@ export default function ProductsScreen() {
         if (!active) return;
         setProducts(result.products);
         replaceProducts(result.products);
-        setShowOfflineWarning(result.source !== 'api');
+        setShowOfflineWarning(false);
       } catch (requestError) {
         if (active) setShowOfflineWarning(true);
       } finally {
@@ -88,9 +88,16 @@ export default function ProductsScreen() {
     }
   }
 
-  function handleDeleteProduct(productId: string) {
-    setProducts((currentProducts) => currentProducts.filter((product) => product.id !== productId));
-    deleteProduct(productId);
+  async function handleDeleteProduct(productId: string) {
+    try {
+      await deleteProduct(productId);
+      setProducts((currentProducts) =>
+        currentProducts.filter((product) => product.id !== productId)
+      );
+    } catch (error) {
+      setShowOfflineWarning(true);
+      console.error('Unable to delete product:', error);
+    }
   }
 
   if (!role) return <Redirect href="/" />;

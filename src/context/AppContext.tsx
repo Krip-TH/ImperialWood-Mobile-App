@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { ApiError } from '@/services/api';
-import { AuthUser, login as loginWithApi, logout as logoutFromApi } from '@/services/authService';
+import { AuthUser, login as loginWithSupabase, logout as logoutFromSupabase } from '@/services/authService';
 import {
   addCartItem,
   getCart,
@@ -12,8 +12,13 @@ import {
 import { getCategories } from '@/services/categoryService';
 import {
   getFavorites,
-  toggleFavorite as toggleFavoriteWithApi,
+  toggleFavorite as toggleFavoriteWithSupabase,
 } from '@/services/favoriteService';
+import { createOrder, type Order } from '@/services/orderService';
+import {
+  createProduct as createProductWithSupabase,
+  deleteProduct as deleteProductWithSupabase,
+} from '@/services/productService';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
 export type UserRole = 'client' | 'admin';
@@ -58,16 +63,17 @@ type AppContextValue = {
   totalStock: number;
   login: (role: UserRole, username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  addProduct: (product: Product) => void;
+  addProduct: (product: Product) => Promise<void>;
   replaceProducts: (products: Product[]) => void;
   toggleFavorite: (productId: string) => void;
   addToCart: (product: Product) => void;
   increaseCartItem: (productId: string) => void;
   decreaseCartItem: (productId: string) => void;
   removeFromCart: (productId: string) => void;
-  deleteProduct: (productId: string) => void;
+  deleteProduct: (productId: string) => Promise<void>;
   deleteSampleProduct: () => void;
   clearFavorites: () => void;
+  checkout: () => Promise<Order>;
   getProductById: (productId: string) => Product | undefined;
 };
 
@@ -184,9 +190,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     password: string
   ): Promise<boolean> => {
     try {
-      const user = await loginWithApi(selectedRole, username.trim(), password);
+      const user = await loginWithSupabase(selectedRole, username.trim(), password);
       setRole(user.role);
-      setCurrentCustomer(user.role === 'client' ? user : null);
+      setCurrentCustomer(user);
       setNotice('');
 
       if (user.role === 'client') {
@@ -285,12 +291,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFavoriteIds([]);
         setCartQuantities({});
         setNotice('');
-        void logoutFromApi();
+        void logoutFromSupabase();
       },
-      addProduct: (product) => {
-        setProducts((currentProducts) => [product, ...currentProducts]);
+      addProduct: async (product) => {
+        const savedProduct = await createProductWithSupabase(product);
+        setProducts((currentProducts) => [savedProduct, ...currentProducts]);
         setNextItemNumber((currentNumber) => currentNumber + 1);
-        setNotice('Door saved locally.');
+        setNotice('Door saved successfully.');
       },
       replaceProducts,
       toggleFavorite: (productId) => {
@@ -301,7 +308,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             : [...currentFavorites, productId]
         );
         if (role === 'client') {
-          void toggleFavoriteWithApi(productId).catch((error) => {
+          void toggleFavoriteWithSupabase(productId).catch((error) => {
             console.error('Unable to update favorite:', error);
             setFavoriteIds((currentFavorites) =>
               wasFavorite
@@ -363,7 +370,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           );
         }
       },
-      deleteProduct: (productId) => {
+      deleteProduct: async (productId) => {
+        await deleteProductWithSupabase(productId);
         setProducts((currentProducts) =>
           currentProducts.filter((product) => product.id !== productId)
         );
@@ -381,13 +389,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
         );
 
         if (sampleProduct) {
-          setProducts((currentProducts) =>
-            currentProducts.filter((product) => product.id !== sampleProduct.id)
-          );
-          setFavoriteIds((currentFavorites) =>
-            currentFavorites.filter((id) => id !== sampleProduct.id)
-          );
-          setNotice('Door deleted successfully.');
+          void deleteProductWithSupabase(sampleProduct.id)
+            .then(() => {
+              setProducts((currentProducts) =>
+                currentProducts.filter((product) => product.id !== sampleProduct.id)
+              );
+              setFavoriteIds((currentFavorites) =>
+                currentFavorites.filter((id) => id !== sampleProduct.id)
+              );
+              setNotice('Door deleted successfully.');
+            })
+            .catch((error) => console.error('Unable to delete product:', error));
         }
       },
       clearFavorites: () => {
@@ -395,10 +407,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setFavoriteIds([]);
         setNotice('Favorites cleared.');
         if (role === 'client') {
-          void Promise.all(idsToClear.map((productId) => toggleFavoriteWithApi(productId))).catch(
+          void Promise.all(
+            idsToClear.map((productId) => toggleFavoriteWithSupabase(productId))
+          ).catch(
             (error) => console.error('Unable to clear remote favorites:', error)
           );
         }
+      },
+      checkout: async () => {
+        const order = await createOrder();
+        setCartQuantities({});
+        setNotice(`Order ${order.id} created successfully.`);
+        return order;
       },
       getProductById: (productId) => products.find((product) => product.id === productId),
     }),

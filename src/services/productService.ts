@@ -1,9 +1,8 @@
 import type { Product, ProductStatus } from '@/context/AppContext';
-import { fallbackProducts, parseProducts, PRODUCTS_URL } from '@/data/products';
-import { apiRequest } from '@/services/api';
+import { supabase } from '@/lib/supabase';
+import { toApiError } from '@/services/api';
 
 type ApiProduct = Record<string, unknown>;
-type ProductsResponse = { products: ApiProduct[] };
 
 function text(value: unknown, fallback = ''): string {
   return value === null || value === undefined ? fallback : String(value);
@@ -20,11 +19,16 @@ function normalizeApiProduct(product: ApiProduct): Product {
   const stock = Number(product.stock_quantity ?? product.stock ?? 0);
   const price = Number(product.price ?? 0);
   const rawPrice = text(product.price_text);
+  const categoryRelation = product.IW_Categories;
+  const category =
+    categoryRelation && typeof categoryRelation === 'object' && !Array.isArray(categoryRelation)
+      ? text((categoryRelation as Record<string, unknown>).name)
+      : '';
 
   return {
-    id: text(product.id),
+    id: text(product.product_id),
     name: text(product.name),
-    category: text(product.category),
+    category: category || text(product.category),
     price: rawPrice || `THB ${price.toLocaleString('en-US')}`,
     image_url: text(product.image_url) || undefined,
     itemCode: text(product.item_code ?? product.itemCode),
@@ -40,24 +44,68 @@ function normalizeApiProduct(product: ApiProduct): Product {
   };
 }
 
-export type ProductSource = 'api' | 'github' | 'local';
+export type ProductSource = 'supabase';
 export type ProductResult = { products: Product[]; source: ProductSource };
 
 export async function getProducts(): Promise<ProductResult> {
-  try {
-    const response = await apiRequest<ProductsResponse>('/products');
-    if (!Array.isArray(response.products)) throw new Error('Invalid API product response.');
-    return { products: response.products.map(normalizeApiProduct), source: 'api' };
-  } catch (apiError) {
-    console.warn('ImperialWood API products unavailable:', apiError);
+  const { data, error } = await supabase
+    .from('IW_Products')
+    .select('*, IW_Categories(name)')
+    .order('product_id', { ascending: false });
+
+  if (error) {
+    throw toApiError(error, 'Products could not be loaded.');
+  }
+  if (!Array.isArray(data)) {
+    throw new Error('Invalid Supabase product response.');
   }
 
-  try {
-    const response = await fetch(PRODUCTS_URL);
-    if (!response.ok) throw new Error(`GitHub product request failed: ${response.status}`);
-    return { products: parseProducts(await response.json(), true), source: 'github' };
-  } catch (githubError) {
-    console.warn('GitHub products unavailable; using bundled catalog:', githubError);
-    return { products: fallbackProducts, source: 'local' };
+  return { products: (data as ApiProduct[]).map(normalizeApiProduct), source: 'supabase' };
+}
+
+export async function createProduct(product: Product): Promise<Product> {
+  const { data: category, error: categoryError } = await supabase
+    .from('IW_Categories')
+    .select('category_id')
+    .eq('name', product.category)
+    .single<{ category_id: string | number }>();
+
+  if (categoryError) {
+    throw toApiError(categoryError, 'The selected category could not be found.');
+  }
+
+  const numericPrice = Number(product.price.replace(/[^0-9.]/g, ''));
+  const { data, error } = await supabase
+    .from('IW_Products')
+    .insert({
+      name: product.name,
+      category_id: category.category_id,
+      category: product.category,
+      price: numericPrice,
+      image_url: product.image_url ?? null,
+      item_code: product.itemCode,
+      stock_quantity: Number.parseInt(product.stockQuantity, 10),
+      store_availability: product.storeAvailability,
+      material: product.material,
+      size: product.size,
+      finish: product.finish,
+      description: product.description,
+    })
+    .select('*, IW_Categories(name)')
+    .single();
+
+  if (error) {
+    throw toApiError(error, 'The product could not be created.');
+  }
+  return normalizeApiProduct(data as ApiProduct);
+}
+
+export async function deleteProduct(productId: string): Promise<void> {
+  const { error } = await supabase
+    .from('IW_Products')
+    .delete()
+    .eq('product_id', productId);
+  if (error) {
+    throw toApiError(error, 'The product could not be deleted.');
   }
 }

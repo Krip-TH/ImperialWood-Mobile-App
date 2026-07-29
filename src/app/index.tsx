@@ -40,7 +40,7 @@ export default function HomeScreen() {
     const firstProduct = products[0];
 
     if (firstProduct) {
-      deleteProduct(firstProduct.id);
+      void deleteProduct(firstProduct.id);
     }
   };
 
@@ -104,13 +104,7 @@ function ClientHome({
         const result = await getProducts();
         if (!active) return;
         replaceProducts(result.products);
-        if (result.source !== 'api') {
-          setCatalogError(
-            result.source === 'github'
-              ? 'API unavailable. Showing GitHub product data.'
-              : 'Showing offline product data.'
-          );
-        }
+        setCatalogError('');
       } catch (error) {
         if (active) setCatalogError('Product data could not be loaded.');
       } finally {

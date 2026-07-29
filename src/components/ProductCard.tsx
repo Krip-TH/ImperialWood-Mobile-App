@@ -49,7 +49,7 @@ export default function ProductCard({
           <TouchableOpacity
             style={styles.deleteButton}
             activeOpacity={0.8}
-            onPress={onDelete ?? (() => deleteProduct(product.id))}
+            onPress={onDelete ?? (() => void deleteProduct(product.id))}
           >
             <Ionicons name="trash-outline" size={15} color="#8A4B22" />
             <Text style={styles.deleteButtonText}>Delete</Text>

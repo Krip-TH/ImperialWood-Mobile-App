@@ -28,7 +28,7 @@ export default function ProductDetailScreen() {
         const result = await getProducts();
         if (!active) return;
         setProduct(result.products.find((catalogProduct) => catalogProduct.id === id));
-        if (result.source !== 'api') setError('Showing fallback product data.');
+        setError(null);
       } catch (requestError) {
         if (active) setError('Product data could not be loaded.');
       } finally {

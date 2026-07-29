@@ -1,4 +1,5 @@
-import { apiRequest } from '@/services/api';
+import { supabase } from '@/lib/supabase';
+import { toApiError } from '@/services/api';
 
 export type StoreRecord = {
   id: string;
@@ -24,12 +25,31 @@ type ApiStore = Record<string, unknown>;
 const value = (store: ApiStore, camel: string, snake: string): string =>
   String(store[camel] ?? store[snake] ?? '');
 
-export async function getStores(): Promise<StoreRecord[]> {
-  const response = await apiRequest<{ stores: ApiStore[] }>('/stores');
-  if (!Array.isArray(response.stores)) throw new Error('Invalid store response.');
+function storeImages(store: ApiStore): string[] {
+  const photos = store.IW_Store_Photos;
+  if (!Array.isArray(photos)) return [];
 
-  return response.stores.map((store) => ({
-    id: String(store.id),
+  return photos
+    .map((photo) => {
+      if (!photo || typeof photo !== 'object') return '';
+      const row = photo as Record<string, unknown>;
+      return String(row.image_url ?? row.photo_url ?? row.url ?? row.path ?? '');
+    })
+    .filter((image) => image.length > 0);
+}
+
+export async function getStores(): Promise<StoreRecord[]> {
+  const { data, error } = await supabase
+    .from('IW_Stores')
+    .select('*, IW_Store_Photos(*)')
+    .order('city');
+
+  if (error) {
+    throw toApiError(error, 'Stores could not be loaded.');
+  }
+
+  return ((data ?? []) as ApiStore[]).map((store) => ({
+    id: String(store.store_id),
     city: String(store.city ?? ''),
     country: String(store.country ?? ''),
     employees: String(store.employees ?? ''),
@@ -44,8 +64,6 @@ export async function getStores(): Promise<StoreRecord[]> {
     closingTime: value(store, 'closingTime', 'closing_time'),
     closedDay: value(store, 'closedDay', 'closed_day'),
     timezone: String(store.timezone ?? ''),
-    images: Array.isArray(store.images)
-      ? store.images.filter((image): image is string => typeof image === 'string')
-      : [],
+    images: storeImages(store),
   }));
 }

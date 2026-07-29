@@ -40,8 +40,10 @@ export default function AddProductScreen() {
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [photoMessage, setPhotoMessage] = useState('No product photo selected');
   const [formMessage, setFormMessage] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
-  const saveProduct = () => {
+  const saveProduct = async () => {
+    if (isSaving) return;
     const missingFields = [
       !name.trim() && 'Product Name',
       !description.trim() && 'Description',
@@ -59,35 +61,30 @@ export default function AddProductScreen() {
       return;
     }
 
-    addProduct({
-      id: nextItemCode,
-      itemCode: nextItemCode,
-      name: name.trim(),
-      description: description.trim(),
-      category: selectedCategory,
-      price: `THB ${price.trim()}`,
-      stockQuantity: stockQuantity.trim(),
-      storeAvailability,
-      material: selectedMaterial,
-      size: selectedSize,
-      finish: finish.trim(),
-      image_url: selectedImageUri ?? undefined,
-      status: getProductStatus(stockQuantity),
-    });
-
-    setName('');
-    setDescription('');
-    setSelectedCategory('');
-    setSelectedMaterial('');
-    setSelectedSize('');
-    setFinish('');
-    setPrice('');
-    setStockQuantity('');
-    setStoreAvailability('');
-    setSelectedImageUri(null);
-    setPhotoMessage('No product photo selected');
+    setIsSaving(true);
     setFormMessage('');
-    router.push('/products');
+    try {
+      await addProduct({
+        id: nextItemCode,
+        itemCode: nextItemCode,
+        name: name.trim(),
+        description: description.trim(),
+        category: selectedCategory,
+        price: `THB ${price.trim()}`,
+        stockQuantity: stockQuantity.trim(),
+        storeAvailability,
+        material: selectedMaterial,
+        size: selectedSize,
+        finish: finish.trim(),
+        image_url: selectedImageUri ?? undefined,
+        status: getProductStatus(stockQuantity),
+      });
+      router.push('/products');
+    } catch (error) {
+      setFormMessage(error instanceof Error ? error.message : 'The product could not be saved.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!role) {
@@ -287,9 +284,14 @@ export default function AddProductScreen() {
 
           {formMessage ? <Text style={styles.formMessage}>{formMessage}</Text> : null}
 
-          <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={saveProduct}>
+          <TouchableOpacity
+            style={[styles.primaryButton, isSaving && styles.buttonDisabled]}
+            activeOpacity={0.9}
+            disabled={isSaving}
+            onPress={() => void saveProduct()}
+          >
             <Ionicons name="checkmark-circle-outline" size={19} color="#FFFFFF" />
-            <Text style={styles.primaryButtonText}>Save Door</Text>
+            <Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save Door'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -415,5 +417,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '800',
+  },
+  buttonDisabled: {
+    opacity: 0.65,
   },
 });

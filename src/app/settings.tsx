@@ -8,7 +8,7 @@ import Header from '@/components/Header';
 import { useAppContext } from '@/context/AppContext';
 
 export default function SettingsScreen() {
-  const { role } = useAppContext();
+  const { currentCustomer, role } = useAppContext();
 
   if (!role) {
     return <Redirect href="/" />;
@@ -21,10 +21,13 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.card}>
           <View style={styles.iconShell}>
-            <Ionicons name="settings-outline" size={28} color="#3B2416" />
+          <Ionicons name="person-outline" size={28} color="#3B2416" />
           </View>
-          <Text style={styles.title}>Settings</Text>
-          <Text style={styles.text}>ImperialWood settings are kept simple for this assignment.</Text>
+          <Text style={styles.title}>{currentCustomer?.fullName || 'Profile'}</Text>
+          <Text style={styles.text}>Username: {currentCustomer?.username || '-'}</Text>
+          <Text style={styles.text}>Email: {currentCustomer?.email || '-'}</Text>
+          <Text style={styles.text}>Phone: {currentCustomer?.phone || '-'}</Text>
+          <Text style={styles.text}>Role: {currentCustomer?.role || role}</Text>
         </View>
       </ScrollView>
       <BottomNavigation />

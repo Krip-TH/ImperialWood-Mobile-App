@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useState, type ComponentProps } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 
@@ -29,11 +29,12 @@ export default function Header({ title }: HeaderProps) {
     { label: 'Categories', icon: 'grid-outline', action: () => router.push('/categories') },
     { label: 'Stores', icon: 'storefront-outline', action: () => router.push('/stores') },
     { label: 'Favorites', icon: 'heart-outline', action: () => router.push('/favorites') },
+    { label: 'Orders', icon: 'receipt-outline', action: () => router.push('/orders' as Href) },
+    { label: 'Profile', icon: 'person-outline', action: () => router.push('/settings') },
   ];
   const adminMenuItems: MenuItem[] = [
     { label: 'Add Product', icon: 'add-circle-outline', action: () => router.push('/add') },
     { label: 'Reports', icon: 'bar-chart-outline', action: () => router.push('/reports') },
-    { label: 'Settings', icon: 'settings-outline', action: () => router.push('/settings') },
   ];
   const menuItems: MenuItem[] = [
     ...commonMenuItems,

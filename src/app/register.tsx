@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BrandLogo from '@/components/BrandLogo';
 import { useAppContext } from '@/context/AppContext';
 import { showAlert } from '@/lib/showAlert';
-import { ApiError, setAuthToken } from '@/services/api';
+import { ApiError } from '@/services/api';
 import { register } from '@/services/authService';
 
 type FormState = {
@@ -88,8 +88,6 @@ export default function RegisterScreen() {
         phone: form.phone.trim(),
         password: form.password,
       });
-      // Registration returns a token, but this screen intentionally returns to Login.
-      await setAuthToken(null);
       showAlert('Success', 'Account created successfully');
 
       try {

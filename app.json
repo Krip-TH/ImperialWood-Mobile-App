@@ -8,15 +8,9 @@
     "scheme": "imperialwood",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "infoPlist": {
-        "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
-        }
-      }
+      "icon": "./assets/expo.icon"
     },
     "android": {
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#F7F1E8",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

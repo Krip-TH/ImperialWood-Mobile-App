@@ -1,11 +1,19 @@
-import { apiRequest } from '@/services/api';
+import { supabase } from '@/lib/supabase';
+import { toApiError } from '@/services/api';
 
-type Category = { id: string; name: string };
+type Category = { category_id: string; name: string };
 
 export async function getCategories(): Promise<string[]> {
-  const response = await apiRequest<{ categories: Category[] }>('/categories');
-  if (!Array.isArray(response.categories)) throw new Error('Invalid category response.');
-  return response.categories
+  const { data, error } = await supabase
+    .from('IW_Categories')
+    .select('category_id, name')
+    .order('name');
+
+  if (error) {
+    throw toApiError(error, 'Categories could not be loaded.');
+  }
+
+  return ((data ?? []) as Category[])
     .map((category) => category.name)
     .filter((name): name is string => typeof name === 'string' && name.length > 0);
 }
