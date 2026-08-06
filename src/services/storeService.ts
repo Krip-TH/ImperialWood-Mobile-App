@@ -32,6 +32,19 @@ type StoreStats = {
   popularCategory: string;
 };
 
+export type StoreUpdateData = Pick<
+  StoreRecord,
+  | 'city'
+  | 'country'
+  | 'employees'
+  | 'satisfaction'
+  | 'businessDays'
+  | 'openingTime'
+  | 'closingTime'
+  | 'closedDay'
+  | 'timezone'
+>;
+
 const DEFAULT_STATS: StoreStats = {
   items: 0,
   orders: 0,
@@ -67,6 +80,12 @@ const STORE_STATS: Record<string, StoreStats> = {
 const value = (store: ApiStore, camel: string, snake: string): string =>
   String(store[camel] ?? store[snake] ?? '');
 
+const timeValue = (store: ApiStore, camel: string, snake: string): string => {
+  const rawValue = value(store, camel, snake);
+  const match = /^(\d{1,2}:\d{2})(?::\d{2}(?:\.\d+)?)?$/.exec(rawValue);
+  return match?.[1] ?? rawValue;
+};
+
 function storeImages(store: ApiStore): string[] {
   const source = Array.isArray(store.images)
     ? store.images
@@ -82,36 +101,65 @@ function storeImages(store: ApiStore): string[] {
     .filter((photoUrl): photoUrl is string => photoUrl.length > 0);
 }
 
+function normalizeStore(store: ApiStore): StoreRecord {
+  const city = String(store.city ?? '');
+  const fallback = STORE_STATS[city] ?? DEFAULT_STATS;
+
+  return {
+    id: String(store.store_id ?? store.id),
+    city,
+    country: String(store.country ?? ''),
+    employees: String(store.employees ?? ''),
+    items: String(store.items ?? fallback.items),
+    orders: String(store.orders ?? fallback.orders),
+    refunds: String(store.refunds ?? fallback.refunds),
+    mostSoldProduct:
+      value(store, 'mostSoldProduct', 'most_sold_product') ||
+      fallback.mostSoldProduct,
+    popularCategory:
+      value(store, 'popularCategory', 'popular_category') ||
+      fallback.popularCategory,
+    satisfaction: String(
+      store.customer_satisfaction ?? store.satisfaction ?? ''
+    ),
+    businessDays: value(store, 'businessDays', 'business_days'),
+    openingTime: timeValue(store, 'openingTime', 'opening_time'),
+    closingTime: timeValue(store, 'closingTime', 'closing_time'),
+    closedDay: value(store, 'closedDay', 'closed_day'),
+    timezone: String(store.timezone ?? ''),
+    images: storeImages(store),
+  };
+}
+
 export async function getStores(): Promise<StoreRecord[]> {
   const stores = await apiData<ApiStore[]>('/stores');
 
-  return stores.map((store) => {
-    const city = String(store.city ?? '');
-    const fallback = STORE_STATS[city] ?? DEFAULT_STATS;
+  return stores.map(normalizeStore);
+}
 
-    return {
-      id: String(store.store_id ?? store.id),
-      city,
-      country: String(store.country ?? ''),
-      employees: String(store.employees ?? ''),
-      items: String(store.items ?? fallback.items),
-      orders: String(store.orders ?? fallback.orders),
-      refunds: String(store.refunds ?? fallback.refunds),
-      mostSoldProduct:
-        value(store, 'mostSoldProduct', 'most_sold_product') ||
-        fallback.mostSoldProduct,
-      popularCategory:
-        value(store, 'popularCategory', 'popular_category') ||
-        fallback.popularCategory,
-      satisfaction: String(
-        store.customer_satisfaction ?? store.satisfaction ?? ''
-      ),
-      businessDays: value(store, 'businessDays', 'business_days'),
-      openingTime: value(store, 'openingTime', 'opening_time'),
-      closingTime: value(store, 'closingTime', 'closing_time'),
-      closedDay: value(store, 'closedDay', 'closed_day'),
-      timezone: String(store.timezone ?? ''),
-      images: storeImages(store),
-    };
-  });
+export async function updateStore(
+  storeId: string,
+  store: StoreUpdateData
+): Promise<StoreRecord> {
+  const updatedStore = await apiData<ApiStore>(
+    `/stores/${encodeURIComponent(storeId)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        city: store.city,
+        country: store.country,
+        employees: Number(store.employees),
+        customer_satisfaction: Number(
+          store.satisfaction.replace('%', '').trim()
+        ),
+        business_days: store.businessDays,
+        opening_time: store.openingTime,
+        closing_time: store.closingTime,
+        closed_day: store.closedDay,
+        timezone: store.timezone,
+      }),
+    }
+  );
+
+  return normalizeStore(updatedStore);
 }

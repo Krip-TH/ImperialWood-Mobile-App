@@ -145,6 +145,35 @@ function withCategory(row) {
   };
 }
 
+function storePayload(body) {
+  const employees = Number(body.employees);
+  const customerSatisfaction = Number(body.customer_satisfaction);
+
+  if (!Number.isInteger(employees) || employees < 0) {
+    throw apiError('Employees must be a non-negative integer.', 400);
+  }
+  if (
+    !Number.isFinite(customerSatisfaction) ||
+    customerSatisfaction < 0 ||
+    customerSatisfaction > 100
+  ) {
+    throw apiError('Customer satisfaction must be between 0 and 100.', 400);
+  }
+
+  return {
+    city: String(body.city || ''),
+    country: String(body.country || ''),
+    employees,
+    customer_satisfaction: customerSatisfaction,
+    business_days: String(body.business_days || ''),
+    opening_time: String(body.opening_time || ''),
+    closing_time: String(body.closing_time || ''),
+    closed_day: String(body.closed_day || ''),
+    timezone: String(body.timezone || ''),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 app.get('/', (_req, res) => {
   res.json({ success: true, message: 'ImperialWood Backend is running' });
 });
@@ -173,6 +202,26 @@ app.get('/api/stores', asyncRoute(async (_req, res) => {
     .order('city');
   assertSupabase(error, 'Stores could not be loaded.');
   res.json({ success: true, data: data || [] });
+}));
+
+app.put('/api/stores/:id', requireAuth, asyncRoute(async (req, res) => {
+  const payload = storePayload(req.body);
+  const { data, error } = await req.db
+    .from('IW_Stores')
+    .update(payload)
+    .eq('store_id', req.params.id)
+    .select(`
+      *,
+      IW_Store_Photos!IW_Store_Photos_store_id_fkey (
+        photo_id,
+        photo_url,
+        sort_order
+      )
+    `)
+    .maybeSingle();
+  assertSupabase(error, 'The store could not be updated.');
+  if (!data) throw apiError('Store not found.', 404);
+  res.json({ success: true, data });
 }));
 
 app.get('/api/products', asyncRoute(async (_req, res) => {

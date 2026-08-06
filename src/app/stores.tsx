@@ -24,7 +24,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
 import { useAppContext } from '@/context/AppContext';
-import { getStores, StoreRecord } from '@/services/storeService';
+import { getStores, StoreRecord, updateStore } from '@/services/storeService';
 
 type Store = StoreRecord;
 
@@ -107,11 +107,6 @@ const initialStores: Store[] = [
 const editableFields: { key: Exclude<keyof Store, 'id' | 'images'>; label: string; keyboard?: 'numeric' }[] = [
   { key: 'city', label: 'City' }, { key: 'country', label: 'Country' },
   { key: 'employees', label: 'Employees', keyboard: 'numeric' },
-  { key: 'items', label: 'Total items', keyboard: 'numeric' },
-  { key: 'orders', label: 'Orders', keyboard: 'numeric' },
-  { key: 'refunds', label: 'Refunds', keyboard: 'numeric' },
-  { key: 'mostSoldProduct', label: 'Most sold product' },
-  { key: 'popularCategory', label: 'Most popular category' },
   { key: 'satisfaction', label: 'Customer satisfaction' },
   { key: 'businessDays', label: 'Business days' },
   { key: 'openingTime', label: 'Opening time' },
@@ -127,6 +122,7 @@ export default function StoresScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Store | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [statusClock, setStatusClock] = useState(() => new Date());
 
   useEffect(() => {
@@ -219,11 +215,36 @@ export default function StoresScreen() {
   };
 
   const startEditing = (store: Store) => { setEditingId(store.id); setDraft({ ...store }); };
-  const saveStore = () => {
-    if (!draft) return;
-    commitStore(draft);
-    setEditingId(null);
-    setDraft(null);
+  const saveStore = async () => {
+    if (!draft || isSaving) return;
+    setIsSaving(true);
+    try {
+      const updatedStore = await updateStore(draft.id, draft);
+      setStores((current) => current.map((store) =>
+        store.id === updatedStore.id
+          ? {
+              ...updatedStore,
+              items: store.items,
+              orders: store.orders,
+              refunds: store.refunds,
+              mostSoldProduct: store.mostSoldProduct,
+              popularCategory: store.popularCategory,
+            }
+          : store
+      ));
+      setEditingId(null);
+      setDraft(null);
+    } catch (error) {
+      console.error('Unable to update store', error);
+      Alert.alert(
+        'Save failed',
+        error instanceof Error
+          ? error.message
+          : 'The store changes could not be saved.'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const removeStorePhoto = async (store: Store, photoIndex: number) => {
@@ -359,7 +380,7 @@ export default function StoresScreen() {
                       )}
                       <View style={styles.actions}>
                       {isEditing ? (
-                        <><TouchableOpacity style={styles.primaryButton} onPress={saveStore}><Ionicons name="checkmark" size={18} color="#FFFFFF" /><Text style={styles.primaryButtonText}>Save Changes</Text></TouchableOpacity><TouchableOpacity style={styles.secondaryButton} onPress={() => { setEditingId(null); setDraft(null); }}><Text style={styles.secondaryButtonText}>Cancel</Text></TouchableOpacity></>
+                        <><TouchableOpacity style={[styles.primaryButton, isSaving && styles.buttonDisabled]} disabled={isSaving} onPress={() => void saveStore()}><Ionicons name="checkmark" size={18} color="#FFFFFF" /><Text style={styles.primaryButtonText}>{isSaving ? 'Saving...' : 'Save Changes'}</Text></TouchableOpacity><TouchableOpacity style={styles.secondaryButton} disabled={isSaving} onPress={() => { setEditingId(null); setDraft(null); }}><Text style={styles.secondaryButtonText}>Cancel</Text></TouchableOpacity></>
                       ) : (
                         <><TouchableOpacity style={styles.primaryButton} onPress={() => startEditing(store)}><Ionicons name="create-outline" size={18} color="#FFFFFF" /><Text style={styles.primaryButtonText}>Edit Store</Text></TouchableOpacity><TouchableOpacity style={styles.secondaryButton} onPress={() => pickPhotos(store.id)}><Ionicons name="cloud-upload-outline" size={18} color="#6B4423" /><Text style={styles.secondaryButtonText}>Upload Store Photos</Text></TouchableOpacity><TouchableOpacity style={styles.secondaryButton} onPress={() => void resetStorePhotos(store)}><Ionicons name="refresh-outline" size={18} color="#6B4423" /><Text style={styles.secondaryButtonText}>Reset Store Photos</Text></TouchableOpacity></>
                       )}
@@ -552,6 +573,7 @@ const styles = StyleSheet.create({
   previewRow: { flexDirection: 'row', height: 100, gap: 3, backgroundColor: '#EADBC7', borderRadius: 12, overflow: 'hidden' },
   previewSlot: { flex: 1, flexBasis: 0, position: 'relative', backgroundColor: '#EEE2D2' },
   actions: { marginTop: 17, gap: 9 }, primaryButton: { minHeight: 46, borderRadius: 14, backgroundColor: '#3B2416', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, primaryButtonText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
+  buttonDisabled: { opacity: 0.6 },
   secondaryButton: { minHeight: 45, borderRadius: 14, backgroundColor: '#F7F0E5', borderWidth: 1, borderColor: '#D8B875', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }, secondaryButtonText: { color: '#6B4423', fontSize: 12, fontWeight: '900' },
   form: { gap: 10 }, inputGroup: { gap: 4 }, inputLabel: { color: '#80634A', fontSize: 10, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 }, input: { minHeight: 42, borderRadius: 12, borderWidth: 1, borderColor: '#DDC7A8', backgroundColor: '#FCF9F5', color: '#3B2416', paddingHorizontal: 12, fontSize: 13, fontWeight: '700' },
 });
