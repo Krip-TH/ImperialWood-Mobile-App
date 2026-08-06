@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Redirect, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ScrollView,
   StatusBar,
@@ -16,12 +16,15 @@ import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
 import ImagePicker from '@/components/ImagePicker';
 import { getProductStatus, useAppContext } from '@/context/AppContext';
+import {
+  getCategoryOptions,
+  type CategoryOption,
+} from '@/services/categoryService';
 
 export default function AddProductScreen() {
   const router = useRouter();
   const {
     addProduct,
-    addProductCategories,
     materialOptions,
     nextItemCode,
     role,
@@ -30,7 +33,8 @@ export default function AddProductScreen() {
   } = useAppContext();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
   const [selectedMaterial, setSelectedMaterial] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [finish, setFinish] = useState('');
@@ -42,8 +46,31 @@ export default function AddProductScreen() {
   const [formMessage, setFormMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (role !== 'admin') return;
+    let active = true;
+
+    void getCategoryOptions()
+      .then((options) => {
+        if (active) setCategories(options);
+      })
+      .catch((error) => {
+        console.error('Unable to load product categories', error);
+        if (active) {
+          setFormMessage('Product categories could not be loaded. Please try again.');
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [role]);
+
   const saveProduct = async () => {
     if (isSaving) return;
+    const selectedCategory = categories.find(
+      (category) => category.categoryId === selectedCategoryId
+    );
     const missingFields = [
       !name.trim() && 'Product Name',
       !description.trim() && 'Description',
@@ -69,7 +96,8 @@ export default function AddProductScreen() {
         itemCode: nextItemCode,
         name: name.trim(),
         description: description.trim(),
-        category: selectedCategory,
+        category: selectedCategory!.name,
+        categoryId: selectedCategory!.categoryId,
         price: `THB ${price.trim()}`,
         stockQuantity: stockQuantity.trim(),
         storeAvailability,
@@ -137,20 +165,20 @@ export default function AddProductScreen() {
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Door Category</Text>
             <View style={styles.optionGrid}>
-              {addProductCategories.map((category) => {
-                const isSelected = selectedCategory === category;
+              {categories.map((category) => {
+                const isSelected = selectedCategoryId === category.categoryId;
 
                 return (
                   <TouchableOpacity
-                    key={category}
+                    key={category.categoryId}
                     style={[styles.optionChip, isSelected && styles.optionChipSelected]}
                     activeOpacity={0.85}
-                    onPress={() => setSelectedCategory(category)}
+                    onPress={() => setSelectedCategoryId(category.categoryId)}
                   >
                     <Text
                       style={[styles.optionChipText, isSelected && styles.optionChipTextSelected]}
                     >
-                      {category}
+                      {category.name}
                     </Text>
                   </TouchableOpacity>
                 );

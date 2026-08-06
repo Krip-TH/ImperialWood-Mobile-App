@@ -86,6 +86,11 @@ function createPayload(product: Product) {
   const numericPrice = Number(
     product.price.replace(/[^0-9.]/g, '')
   );
+  const categoryId = Number(product.categoryId);
+
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    throw new Error('Please select a valid category.');
+  }
 
   const numericStock =
     Number.parseInt(product.stockQuantity, 10) || 0;
@@ -101,7 +106,7 @@ function createPayload(product: Product) {
     product_id: product.id || undefined,
     item_code: product.itemCode,
     product_name: product.name,
-    category_id: Number(product.categoryId),
+    category_id: categoryId,
     price: numericPrice,
     total_stock: numericStock,
     badge_status: badgeStatus,

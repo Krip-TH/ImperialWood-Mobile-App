@@ -115,11 +115,15 @@ async function getCart(req, createIfMissing) {
 
 function productPayload(body) {
   const stock = Number(body.total_stock ?? 0);
+  const categoryId = Number(body.category_id);
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    throw apiError('A valid category ID is required.', 400);
+  }
   return {
     ...(body.product_id ? { product_id: String(body.product_id) } : {}),
     item_code: String(body.item_code || ''),
     product_name: String(body.product_name || ''),
-    category_id: Number(body.category_id),
+    category_id: categoryId,
     material: String(body.material || ''),
     size: String(body.size || ''),
     finish: String(body.finish || ''),
@@ -133,6 +137,16 @@ function productPayload(body) {
     product_status: body.product_status || 'active',
     updated_at: new Date().toISOString(),
   };
+}
+
+async function assertProductCategory(req, categoryId) {
+  const { data, error } = await req.db
+    .from('IW_Categories')
+    .select('category_id')
+    .eq('category_id', categoryId)
+    .maybeSingle();
+  assertSupabase(error, 'The product category could not be checked.');
+  if (!data) throw apiError('Product category not found.', 400);
 }
 
 function withCategory(row) {
@@ -259,6 +273,7 @@ app.get('/api/products/:id', asyncRoute(async (req, res) => {
 
 app.post('/api/products', requireAuth, asyncRoute(async (req, res) => {
   const payload = productPayload(req.body);
+  await assertProductCategory(req, payload.category_id);
   const { data, error } = await req.db
     .from('IW_Products')
     .insert(payload)
@@ -277,6 +292,7 @@ app.post('/api/products', requireAuth, asyncRoute(async (req, res) => {
 app.put('/api/products/:id', requireAuth, asyncRoute(async (req, res) => {
   const payload = productPayload(req.body);
   delete payload.product_id;
+  await assertProductCategory(req, payload.category_id);
   const { data, error } = await req.db
     .from('IW_Products')
     .update(payload)

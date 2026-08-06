@@ -22,8 +22,10 @@ export async function getCategories(): Promise<string[]> {
 export async function getCategoryOptions(): Promise<CategoryOption[]> {
   const categories = await apiData<ApiCategory[]>('/categories');
 
-  return categories.map((category) => ({
-    categoryId: String(category.category_id),
-    name: category.category_name,
-  }));
+  return categories
+    .filter((category) => category.category_status !== 'inactive')
+    .map((category) => ({
+      categoryId: String(category.category_id),
+      name: category.category_name,
+    }));
 }
