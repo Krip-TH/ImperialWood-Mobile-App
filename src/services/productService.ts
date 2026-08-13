@@ -1,6 +1,12 @@
 import type { Product, ProductStatus } from '@/context/AppContext';
 import { apiData } from '@/services/api';
 
+export type ProductImageUpload = {
+  file_name: string;
+  content_base64: string;
+  mime_type?: string | null;
+};
+
 type ApiProduct = {
   product_id: string | number;
   item_code: string;
@@ -82,7 +88,10 @@ function normalizeProduct(row: ApiProduct): Product {
   };
 }
 
-function createPayload(product: Product) {
+function createPayload(
+  product: Product,
+  imageUpload?: ProductImageUpload
+) {
   const numericPrice = Number(
     product.price.replace(/[^0-9.]/g, '')
   );
@@ -116,6 +125,7 @@ function createPayload(product: Product) {
     finish: product.finish,
     description: product.description,
     image_url: product.image_url ?? null,
+    ...(imageUpload ? { image_upload: imageUpload } : {}),
     product_status: product.productStatus ?? 'active',
   };
 }
@@ -147,11 +157,13 @@ export async function getProductById(
 }
 
 export async function createProduct(
-  product: Product
+  product: Product,
+  imageUpload?: ProductImageUpload
 ): Promise<Product> {
   const createdProduct = await apiData<ApiProduct>('/products', {
     method: 'POST',
-    body: JSON.stringify(createPayload(product)),
+    body: JSON.stringify(createPayload(product, imageUpload)),
+    timeoutMs: imageUpload ? 60_000 : undefined,
   });
 
   return normalizeProduct(createdProduct);

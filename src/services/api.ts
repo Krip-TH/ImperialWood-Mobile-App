@@ -8,6 +8,7 @@ const REQUEST_TIMEOUT_MS = 15_000;
 
 type ApiOptions = RequestInit & {
   token?: string;
+  timeoutMs?: number;
 };
 
 export class ApiError extends Error {
@@ -73,10 +74,15 @@ async function apiCall<T>(
   endpoint: string,
   options: ApiOptions = {}
 ): Promise<T> {
-  const { token, headers, ...fetchOptions } = options;
+  const {
+    token,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+    headers,
+    ...fetchOptions
+  } = options;
   const authToken = token ?? await AsyncStorage.getItem(AUTH_TOKEN_KEY);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

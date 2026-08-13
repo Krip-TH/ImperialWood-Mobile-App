@@ -14,7 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import BottomNavigation from '@/components/BottomNavigation';
 import Header from '@/components/Header';
-import ImagePicker from '@/components/ImagePicker';
+import ImagePicker, {
+  type ProductImageSelection,
+} from '@/components/ImagePicker';
 import { getProductStatus, useAppContext } from '@/context/AppContext';
 import {
   getCategoryOptions,
@@ -41,7 +43,8 @@ export default function AddProductScreen() {
   const [price, setPrice] = useState('');
   const [stockQuantity, setStockQuantity] = useState('');
   const [storeAvailability, setStoreAvailability] = useState('');
-  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const [selectedImage, setSelectedImage] =
+    useState<ProductImageSelection | null>(null);
   const [photoMessage, setPhotoMessage] = useState('No product photo selected');
   const [formMessage, setFormMessage] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -91,6 +94,13 @@ export default function AddProductScreen() {
     setIsSaving(true);
     setFormMessage('');
     try {
+      const imageUpload = selectedImage
+        ? {
+            file_name: selectedImage.fileName || 'product-image.jpg',
+            content_base64: selectedImage.base64,
+            mime_type: selectedImage.mimeType,
+          }
+        : undefined;
       await addProduct({
         id: nextItemCode,
         itemCode: nextItemCode,
@@ -104,9 +114,9 @@ export default function AddProductScreen() {
         material: selectedMaterial,
         size: selectedSize,
         finish: finish.trim(),
-        image_url: selectedImageUri ?? undefined,
+        image_url: undefined,
         status: getProductStatus(stockQuantity),
-      });
+      }, imageUpload);
       router.push('/products');
     } catch (error) {
       setFormMessage(error instanceof Error ? error.message : 'The product could not be saved.');
@@ -304,9 +314,9 @@ export default function AddProductScreen() {
           </View>
 
           <ImagePicker
-            selectedImageUri={selectedImageUri}
+            selectedImageUri={selectedImage?.uri ?? null}
             message={photoMessage}
-            onSelectImage={setSelectedImageUri}
+            onSelectImage={setSelectedImage}
             onMessageChange={setPhotoMessage}
           />
 

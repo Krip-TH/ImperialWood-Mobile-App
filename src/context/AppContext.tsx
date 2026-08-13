@@ -18,6 +18,7 @@ import { createOrder, type Order } from '@/services/orderService';
 import {
   createProduct as createProductWithSupabase,
   deleteProduct as deleteProductWithSupabase,
+  type ProductImageUpload,
 } from '@/services/productService';
 
 export type ProductStatus = 'Available' | 'Low Stock' | 'Out of Stock';
@@ -66,7 +67,10 @@ type AppContextValue = {
   totalStock: number;
   login: (role: UserRole, username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  addProduct: (product: Product) => Promise<void>;
+  addProduct: (
+    product: Product,
+    imageUpload?: ProductImageUpload
+  ) => Promise<void>;
   replaceProducts: (products: Product[]) => void;
   toggleFavorite: (productId: string) => void;
   addToCart: (product: Product) => Promise<void>;
@@ -296,8 +300,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setNotice('');
         void logoutFromSupabase();
       },
-      addProduct: async (product) => {
-        const savedProduct = await createProductWithSupabase(product);
+      addProduct: async (product, imageUpload) => {
+        const savedProduct = await createProductWithSupabase(product, imageUpload);
         setProducts((currentProducts) => [savedProduct, ...currentProducts]);
         setNextItemNumber((currentNumber) => currentNumber + 1);
         setNotice('Door saved successfully.');

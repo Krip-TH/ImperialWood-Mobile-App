@@ -2,10 +2,17 @@ import * as ExpoImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+export type ProductImageSelection = {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  base64: string;
+};
+
 type ImagePickerProps = {
   selectedImageUri: string | null;
   message: string;
-  onSelectImage: (uri: string) => void;
+  onSelectImage: (image: ProductImageSelection) => void;
   onMessageChange: (message: string) => void;
 };
 
@@ -20,6 +27,7 @@ export default function ImagePicker({
       mediaTypes: ['images'],
       allowsEditing: false,
       quality: 1,
+      base64: true,
     });
 
     if (result.canceled) {
@@ -33,15 +41,30 @@ export default function ImagePicker({
       fileName.endsWith('.jpg') ||
       fileName.endsWith('.jpeg') ||
       fileName.endsWith('.png') ||
+      fileName.endsWith('.webp') ||
       mimeType === 'image/jpeg' ||
-      mimeType === 'image/png';
+      mimeType === 'image/png' ||
+      mimeType === 'image/webp';
 
     if (!isAllowedImage && (fileName || mimeType)) {
-      onMessageChange('Please choose a JPG, JPEG, or PNG image');
+      onMessageChange('Please choose a JPG, JPEG, PNG, or WEBP image');
+      return;
+    }
+    if (!asset.base64) {
+      onMessageChange('The selected image could not be read. Please try again.');
+      return;
+    }
+    if (asset.fileSize && asset.fileSize > 6 * 1024 * 1024) {
+      onMessageChange('Please choose an image that is 6 MB or smaller');
       return;
     }
 
-    onSelectImage(asset.uri);
+    onSelectImage({
+      uri: asset.uri,
+      fileName: asset.fileName,
+      mimeType: asset.mimeType,
+      base64: asset.base64,
+    });
     onMessageChange('Product photo selected');
   };
 
