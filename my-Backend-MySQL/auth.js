@@ -23,4 +23,19 @@ async function getAuthUser(token) {
   return data.user;
 }
 
-module.exports = { getAuthUser };
+async function signInWithPassword(email, password) {
+  const { data, error } = await authClient.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error || !data.user || !data.session) {
+    const authError = new Error('Invalid username or password.');
+    authError.status = 401;
+    throw authError;
+  }
+
+  return data;
+}
+
+module.exports = { getAuthUser, signInWithPassword };

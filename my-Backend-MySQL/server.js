@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 const pool = require('./database');
 const { getAuthUser } = require('./auth');
 const { uploadProductImage } = require('./githubImages');
@@ -367,6 +368,42 @@ app.get('/api/db-test', async (_req, res) => {
     res.status(503).json({ success: false, connected: false });
   }
 });
+
+app.post('/api/auth/login', asyncRoute(async (req, res) => {
+  const role = String(req.body.role || '').trim().toLowerCase();
+  const username = String(req.body.username || '').trim();
+  const password = String(req.body.password || '');
+
+  if (!['client', 'admin'].includes(role)) {
+    throw apiError('Invalid username or password.', 401);
+  }
+  if (!username || !password) {
+    throw apiError('Invalid username or password.', 401);
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT user_id, auth_user_id, full_name, username, email, phone, role,
+            password_hash, created_at
+     FROM IW_Users
+     WHERE username = ? AND role = ?
+     LIMIT 1`,
+    [username, role]
+  );
+  const profile = rows[0];
+  if (!profile?.password_hash || !(await bcrypt.compare(password, profile.password_hash))) {
+    throw apiError('Invalid username or password.', 401);
+  }
+
+  delete profile.password_hash;
+  delete profile.auth_user_id;
+  res.json({
+    success: true,
+    data: {
+      token: null,
+      user: profile,
+    },
+  });
+}));
 
 app.get('/api/categories', asyncRoute(async (_req, res) => {
   const [rows] = await pool.execute(

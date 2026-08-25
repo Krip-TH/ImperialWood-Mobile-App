@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { ApiError, setAuthToken, toApiError } from '@/services/api';
+import { apiData, ApiError, setAuthToken, toApiError } from '@/services/api';
 
 export type AuthRole = 'client' | 'admin';
 
@@ -48,55 +48,16 @@ export async function login(
   username: string,
   password: string
 ): Promise<AuthUser> {
-  const { data: loginRows, error: resolveError } = await supabase.rpc(
-    'iw_resolve_login',
+  const response = await apiData<{ token: string; user: UserRow }>(
+    '/auth/login',
     {
-      p_role: role,
-      p_username: username,
+      method: 'POST',
+      body: JSON.stringify({ role, username, password }),
     }
   );
 
-  if (resolveError) {
-    throw toApiError(resolveError, 'Unable to find this account.');
-  }
-
-  const loginProfile = Array.isArray(loginRows) ? loginRows[0] : loginRows;
-  const email =
-    loginProfile &&
-    typeof loginProfile === 'object' &&
-    'email' in loginProfile
-      ? String(loginProfile.email ?? '')
-      : '';
-
-  if (!email) {
-    throw new ApiError('Invalid username or password.', 401);
-  }
-
-  const { data: authData, error: authError } =
-    await supabase.auth.signInWithPassword({ email, password });
-
-  if (authError || !authData.session) {
-    throw new ApiError(
-      authError?.message || 'Invalid username or password.',
-      authError?.status ?? 401,
-      authError
-    );
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('IW_Users')
-    .select('user_id, full_name, username, email, phone, role, created_at')
-    .eq('auth_user_id', authData.user.id)
-    .eq('role', role)
-    .single<UserRow>();
-
-  if (profileError) {
-    await supabase.auth.signOut();
-    throw toApiError(profileError, 'The user profile could not be loaded.');
-  }
-
-  await setAuthToken(authData.session.access_token);
-  return normalizeUser(profile);
+  await setAuthToken(response.token);
+  return normalizeUser(response.user);
 }
 
 export async function register(input: RegisterInput): Promise<AuthUser> {
@@ -163,10 +124,5 @@ export async function register(input: RegisterInput): Promise<AuthUser> {
 }
 
 export async function logout(): Promise<void> {
-  const { error } = await supabase.auth.signOut();
   await setAuthToken(null);
-
-  if (error) {
-    throw toApiError(error, 'Unable to sign out.');
-  }
 }

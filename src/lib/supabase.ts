@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -10,13 +9,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-const isStaticRendering = typeof window === 'undefined';
-
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: isStaticRendering ? undefined : AsyncStorage,
-    autoRefreshToken: !isStaticRendering,
-    persistSession: !isStaticRendering,
+    autoRefreshToken: false,
+    persistSession: false,
     detectSessionInUrl: false,
   },
 });
