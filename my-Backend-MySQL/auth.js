@@ -1,41 +1,45 @@
-const { createClient } = require('@supabase/supabase-js');
+const { randomBytes } = require('crypto');
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const AUTH_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const authSessions = new Map();
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY must be configured.');
+function authenticationError() {
+  const error = new Error('Invalid authentication token.');
+  error.status = 401;
+  return error;
 }
 
-const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
+function createAuthToken(userId, role) {
+  if (userId === undefined || userId === null || !['client', 'admin'].includes(role)) {
+    throw new Error('A valid user ID and role are required to create an auth token.');
+  }
+
+  const now = Date.now();
+  for (const [token, session] of authSessions) {
+    if (session.expiresAt <= now) authSessions.delete(token);
+  }
+
+  const token = randomBytes(32).toString('base64url');
+  authSessions.set(token, {
+    userId: String(userId),
+    role,
+    expiresAt: now + AUTH_SESSION_TTL_MS,
+  });
+  return token;
+}
 
 async function getAuthUser(token) {
-  const { data, error } = await authClient.auth.getUser(token);
+  const session = authSessions.get(token);
 
-  if (error || !data.user) {
-    const authError = new Error(error?.message || 'Invalid authentication token.');
-    authError.status = 401;
-    throw authError;
+  if (!session || session.expiresAt <= Date.now()) {
+    if (session) authSessions.delete(token);
+    throw authenticationError();
   }
 
-  return data.user;
+  return {
+    userId: session.userId,
+    role: session.role,
+  };
 }
 
-async function signInWithPassword(email, password) {
-  const { data, error } = await authClient.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (error || !data.user || !data.session) {
-    const authError = new Error('Invalid username or password.');
-    authError.status = 401;
-    throw authError;
-  }
-
-  return data;
-}
-
-module.exports = { getAuthUser, signInWithPassword };
+module.exports = { createAuthToken, getAuthUser };

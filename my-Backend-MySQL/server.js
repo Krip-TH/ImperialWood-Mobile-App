@@ -4,7 +4,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const pool = require('./database');
-const { getAuthUser } = require('./auth');
+const { createAuthToken, getAuthUser } = require('./auth');
 const { uploadProductImage } = require('./githubImages');
 
 const app = express();
@@ -129,12 +129,14 @@ async function getProfile(req, executor = pool) {
   const [rows] = await executor.execute(
     `SELECT user_id, full_name, username, email, phone, role, created_at
      FROM IW_Users
-     WHERE auth_user_id = ?
+     WHERE user_id = ?
      LIMIT 1`,
-    [req.authUser.id]
+    [req.authUser.userId]
   );
 
-  if (!rows[0]) throw apiError('The user profile could not be loaded.', 404);
+  if (!rows[0] || rows[0].role !== req.authUser.role) {
+    throw apiError('Invalid authentication token.', 401);
+  }
   return rows[0];
 }
 
@@ -394,12 +396,13 @@ app.post('/api/auth/login', asyncRoute(async (req, res) => {
     throw apiError('Invalid username or password.', 401);
   }
 
+  const token = createAuthToken(profile.user_id, profile.role);
   delete profile.password_hash;
   delete profile.auth_user_id;
   res.json({
     success: true,
     data: {
-      token: null,
+      token,
       user: profile,
     },
   });

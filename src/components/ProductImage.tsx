@@ -24,7 +24,7 @@ export default function ProductImage({ product, style, resizeMode = 'cover' }: P
   const remoteImageFailed = failedImageIds.has(product.id);
   const genericFallback = require('../../assets/products/imperial-classic-oak-door.jpg');
   const source = product.image_url && !remoteImageFailed
-    ? { uri: `${product.image_url}?v=3` }
+    ? { uri: product.image_url }
     : genericFallback;
 
   return (
