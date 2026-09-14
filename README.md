@@ -1,56 +1,214 @@
-# Welcome to your Expo app 👋
+# 🚪 ImperialWood Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**ImperialWood** is a mobile application for door product management and shopping.  
+The application provides features for customers to browse products, manage favorites, add products to a shopping cart, place orders, and view store information.
 
-## Get started
+The system also provides administrative functions for managing products, stores, inventory, and orders.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## 📱 Main Features
 
-2. Start the app
+### 👤 Customer
+- Browse door products and accessories
+- Search and view product details
+- Browse products by category
+- Add products to favorites
+- Add products to shopping cart
+- Place orders
+- View order information
+- View ImperialWood store information
 
-   ```bash
-   npx expo start
-   ```
+### 🛠️ Administrator
+- Add, edit, and delete products
+- Manage product categories
+- Manage store information
+- Manage store inventory
+- Manage orders
+- Manage product information and images
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 🧰 Technologies
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Frontend
 
-## Get a fresh project
+- React Native
+- Expo
+- Expo Router
+- AsyncStorage
+- Expo Image
+- Expo Image Picker
+- Expo File System
 
-When you're ready, run:
+### Backend
 
-```bash
-npm run reset-project
+- Node.js
+- Express.js
+- MySQL
+- MySQL2
+- CORS
+- dotenv
+- bcryptjs
+
+### Development Tools
+
+- Visual Studio Code
+- Android Studio
+- Expo
+- Git
+- GitHub
+- phpMyAdmin
+
+---
+
+## 📂 Project Structure
+
+```text
+ImperialWood-Mobile-App/
+│
+├── assets/                 # Images and application assets
+├── src/                    # Application source code
+├── my-Backend-MySQL/       # Node.js / Express / MySQL backend
+├── scripts/                # Project scripts
+├── stock-clustering/       # Product stock clustering
+├── products.json           # Product data
+├── app.json                # Expo configuration
+├── package.json            # Frontend dependencies
+├── User-Manual.pdf         # Complete project user manual
+└── README.md
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+---
 
-### Other setup steps
+## 🚀 Installation
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+### 1. Clone the Repository
 
-## Learn more
+```bash
+git clone https://github.com/Krip-TH/ImperialWood-Mobile-App.git
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Then enter the project directory:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```bash
+cd ImperialWood-Mobile-App
+```
 
-## Join the community
+---
 
-Join our community of developers creating universal apps.
+### 2. Install Frontend Dependencies
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm install
+```
+
+---
+
+### 3. Start the Frontend
+
+```bash
+npx expo start
+```
+
+The application can then be opened using Expo or an Android emulator.
+
+---
+
+## 🖥️ Backend Setup
+
+Enter the MySQL backend directory:
+
+```bash
+cd my-Backend-MySQL
+```
+
+Install backend dependencies:
+
+```bash
+npm install
+```
+
+Configure the required environment variables using the provided:
+
+```text
+.env.example
+```
+
+> ⚠️ Do not upload your real `.env` file containing database passwords, tokens, or other private credentials to GitHub.
+
+---
+
+## 🗄️ Database Setup
+
+The ImperialWood backend uses **MySQL** as its database.
+
+To import the database:
+
+1. Open **phpMyAdmin**
+2. Select or create the ImperialWood database
+3. Open the **Import** tab
+4. Select the provided `.sql` database file
+5. Set the format to **SQL**
+6. Click **Import**
+7. Open the **Structure** tab to verify the imported tables
+
+The database is used to manage application data such as:
+
+- Users
+- Products
+- Categories
+- Stores
+- Store inventory
+- Store photos
+- Favorites
+- Shopping carts
+- Orders
+
+---
+
+## 🔗 System Architecture
+
+```text
+Mobile Application
+React Native + Expo
+        │
+        │ REST API
+        ▼
+Node.js + Express.js
+        │
+        ▼
+      MySQL
+        │
+        ▼
+   phpMyAdmin
+```
+
+---
+
+## 📖 User Manual
+
+A complete guide covering project installation, dependencies, backend configuration, database setup, and project structure is available here:
+
+### 👉 [View ImperialWood User Manual](./User-Manual.pdf)
+
+---
+
+## 🔗 Repository
+
+**GitHub Repository:**  
+https://github.com/Krip-TH/ImperialWood-Mobile-App
+
+---
+
+## 👨‍💻 Author
+
+**Krip Topongkasem**
+
+ImperialWood Mobile App
+
+---
+
+## 📄 License
+
+This project includes an MIT License. See the `LICENSE` file for more information.
