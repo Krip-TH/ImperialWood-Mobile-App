@@ -70,6 +70,7 @@ ImperialWood-Mobile-App/
 ├── assets/                 # Images and application assets
 ├── src/                    # Application source code
 ├── my-Backend-MySQL/       # Node.js / Express / MySQL backend
+│   └── ip_std6730202025.sql # MySQL database export
 ├── scripts/                # Project scripts
 ├── stock-clustering/       # Product stock clustering
 ├── products.json           # Product data
@@ -143,15 +144,27 @@ Configure the required environment variables using the provided:
 
 The ImperialWood backend uses **MySQL** as its database.
 
-To import the database:
+### 📁 Database File
+
+The MySQL database export file is located in the `my-Backend-MySQL` folder:
+
+### 👉 [View / Download MySQL Database](./my-Backend-MySQL/ip_std6730202025.sql)
+
+### Import the Database
 
 1. Open **phpMyAdmin**
-2. Select or create the ImperialWood database
+2. Create or select the database:
+   ```text
+   ip_std6730202025
+   ```
 3. Open the **Import** tab
-4. Select the provided `.sql` database file
-5. Set the format to **SQL**
+4. Select the database file:
+   ```text
+   my-Backend-MySQL/ip_std6730202025.sql
+   ```
+5. Make sure the file format is set to **SQL**
 6. Click **Import**
-7. Open the **Structure** tab to verify the imported tables
+7. Open the **Structure** tab to verify that all tables have been imported successfully
 
 The database is used to manage application data such as:
 
